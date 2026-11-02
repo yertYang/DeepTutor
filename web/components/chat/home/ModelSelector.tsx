@@ -279,7 +279,7 @@ export default function ModelSelector({
                   option={option}
                   selected={optionKey === selectedKey}
                   onSelect={() => {
-                    onChange(optionSelection);
+                    onChange(optionKey === selectedKey ? selectedSelection : optionSelection);
                     setOpen(false);
                     linger();
                   }}
