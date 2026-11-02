@@ -24,6 +24,7 @@ VALID_REASONING_EFFORTS: tuple[str, ...] = (
     "high",
     "xhigh",
     "max",
+    "adaptive",
 )
 
 

@@ -29,6 +29,10 @@ class LLMSelection(BaseModel):
 
     profile_id: str
     model_id: str
+    # Optional per-conversation override; omission inherits the catalog default.
+    reasoning_effort: str | None = Field(
+        default=None, pattern=r"^(none|minimal|low|medium|high|xhigh|max|adaptive)$"
+    )
 
 
 class OutgoingAttachment(BaseModel):

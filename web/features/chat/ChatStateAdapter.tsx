@@ -12,6 +12,7 @@ import {
   type FailedSubmissionRecord,
 } from "@/lib/failed-submissions";
 import { randomUuid } from "@/lib/random-uuid";
+import { readLLMSelection as asLLMSelection } from "@/lib/llm-selection";
 import { newCommandId } from "@/contracts/parse/turn-command";
 
 import React, {
@@ -1852,17 +1853,6 @@ function asStringArray(value: unknown): string[] {
         (item): item is string => typeof item === "string" && item.length > 0,
       )
     : [];
-}
-
-function asLLMSelection(value: unknown): LLMSelection | null {
-  const record = asRecord(value);
-  const profileId =
-    typeof record?.profile_id === "string" ? record.profile_id.trim() : "";
-  const modelId =
-    typeof record?.model_id === "string" ? record.model_id.trim() : "";
-  return profileId && modelId
-    ? { profile_id: profileId, model_id: modelId }
-    : null;
 }
 
 function normalizeSelectedBranches(value: unknown): Record<string, number> {
