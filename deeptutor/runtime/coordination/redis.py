@@ -87,7 +87,8 @@ local payload_key = KEYS[2]
 local seq_key = KEYS[3]
 local requested_seq = tonumber(ARGV[1])
 local raw_payload = ARGV[2]
-local retention = tonumber(ARGV[3])
+local turn_id = ARGV[3]
+local retention = tonumber(ARGV[4])
 local seq
 if requested_seq > 0 then
   seq = requested_seq
@@ -315,7 +316,8 @@ class RedisCoordinator:
         requested_seq = int(event.get("seq") or 0)
         payload = dict(event)
         payload.pop("seq", None)
-        payload["turn_id"] = payload.get("turn_id") or turn_id
+        if "turn_id" not in payload or payload["turn_id"] == "":
+            payload["turn_id"] = turn_id
         try:
             result = await self.client.eval(
                 _PUBLISH_EVENT_LUA,
@@ -325,6 +327,7 @@ class RedisCoordinator:
                 self._key("event_seq", turn_id),
                 requested_seq,
                 json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str),
+                turn_id,
                 self.stream_retention_seconds,
             )
         except Exception as exc:
