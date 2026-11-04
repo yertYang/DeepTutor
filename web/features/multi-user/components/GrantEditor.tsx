@@ -648,7 +648,7 @@ export function GrantEditor({
                 ))}
               </div>
             </section>
-            <section className="min-w-0">
+            {!resources?.native && (<section className="min-w-0">
               <SectionTitle>{t("Knowledge")}</SectionTitle>
               <div className="space-y-1.5 text-xs">
                 {(resources?.knowledge_bases || []).map((kb) => (
@@ -661,8 +661,8 @@ export function GrantEditor({
                   />
                 ))}
               </div>
-            </section>
-            <section className="min-w-0">
+            </section>)}
+            {!resources?.native && (<section className="min-w-0">
               <SectionTitle>{t("Skills")}</SectionTitle>
               <div className="space-y-1.5 text-xs">
                 {(resources?.skills || []).map((skill) => (
@@ -675,8 +675,8 @@ export function GrantEditor({
                   />
                 ))}
               </div>
-            </section>
-            <section className="min-w-0">
+            </section>)}
+            {!resources?.native && (<section className="min-w-0">
               <SectionTitle>{t("Partners")}</SectionTitle>
               <div className="space-y-1.5 text-xs">
                 {(resources?.partners || []).length === 0 ? (
@@ -701,7 +701,7 @@ export function GrantEditor({
                   ))
                 )}
               </div>
-            </section>
+            </section>)}
 
             <section className="min-w-0">
               <SectionTitle>{t("System tools")}</SectionTitle>
@@ -733,7 +733,7 @@ export function GrantEditor({
                 </div>
               )}
             </section>
-            <section className="min-w-0">
+            {!resources?.native && (<section className="min-w-0">
               <SectionTitle>{t("MCP tools")}</SectionTitle>
               <ModeSwitch
                 isCustom={grant.mcp_tools !== null}
@@ -803,8 +803,8 @@ export function GrantEditor({
                     {t("No MCP servers configured.")}
                   </p>
                 ))}
-            </section>
-            <section className="min-w-0">
+            </section>)}
+            {!resources?.native && (<section className="min-w-0">
               <SectionTitle>{t("Code execution")}</SectionTitle>
               <div className="space-y-1.5 text-xs">
                 <CheckRow
@@ -821,7 +821,7 @@ export function GrantEditor({
                   }
                 />
               </div>
-            </section>
+            </section>)}
           </div>
         </div>
 

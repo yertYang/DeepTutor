@@ -27,6 +27,8 @@ import {
 import { parseAvatarMarker } from "@/lib/avatar";
 import { formatDate, type Language } from "@/lib/datetime";
 import { accountRoleLabelKey } from "@/lib/account-role";
+import { GuardianAccessPanel } from "@/features/multi-user/components/GuardianAccessPanel";
+import { PersonalModelSettings } from "@/features/multi-user/components/PersonalModelSettings";
 
 const AVATAR_OUTPUT_SIZE = 256;
 // Decoding a huge photo just to throw away most pixels wastes memory; the
@@ -101,6 +103,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
+  const [nativeAccounts, setNativeAccounts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +130,7 @@ export default function ProfilePage() {
         router.replace("/login");
         return;
       }
+      setNativeAccounts(Boolean(status.native_accounts));
       try {
         const info = await getProfile();
         if (!cancelled) setProfile(info);
@@ -500,6 +504,9 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>}
+
+            {nativeAccounts && !profile.must_change_password && profile.role !== "admin" && <PersonalModelSettings />}
+            {nativeAccounts && !profile.must_change_password && profile.role !== "admin" && <GuardianAccessPanel userId={profile.id} />}
 
             {/* Sign out card */}
             <div className="mt-4 flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">

@@ -101,6 +101,37 @@ pub fn add(c: &Connection, s: &str, input: &Value) -> Result<Value> {
     if content.len() > knowledge::MAX_FILE || original.len() > knowledge::MAX_BATCH {
         return Err(Error::invalid("Reading source exceeds the import limit."));
     }
+    snapshot(c, s, &kb, &path, &hash, &content, &original)
+}
+
+pub(crate) fn copy_material(target: &Connection, source: &Connection, item: &str) -> Result<Value> {
+    let metadata = read(source, "", item)?;
+    let content = self::source(source, "", item)?;
+    let (_, original) = self::original(source, "", item)?;
+    let kb = format!("assigned-{}", text(&metadata, "kb"));
+    let hash = text(&metadata, "original_hash");
+    let path = text(&metadata, "path");
+    let prior: Option<String> = target.query_row("SELECT id FROM native_reading_items WHERE workspace_id='' AND kb=? AND path=? AND original_hash=?",params![kb,path,hash],|r|r.get(0)).optional()?;
+    if let Some(id) = prior {
+        return read(target, "", &id);
+    }
+    let item = snapshot(target, "", &kb, path, hash, &content, &original)?;
+    rename(
+        target,
+        "",
+        text(&item, "id"),
+        &json!({"title":metadata["title"],"expected_revision":0}),
+    )
+}
+fn snapshot(
+    c: &Connection,
+    s: &str,
+    kb: &str,
+    path: &str,
+    hash: &str,
+    content: &str,
+    original: &[u8],
+) -> Result<Value> {
     let source_id = format!(
         "{:x}",
         Sha256::digest([hash.as_bytes(), b"\0", content.as_bytes()].concat())
@@ -580,7 +611,7 @@ mod tests {
         assert_eq!(
             c.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
                 .unwrap(),
-            6
+            crate::backup::SCHEMA_VERSION
         );
         assert_eq!(
             crate::documents::read(&c, "a", text(&page, "id")).unwrap(),

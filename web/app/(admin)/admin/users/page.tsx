@@ -20,6 +20,7 @@ import { GrantEditor } from "@/features/multi-user/components/GrantEditor";
 import { BookPermissionEditor } from "@/features/multi-user/components/BookPermissionEditor";
 import { LearnerProfileEditor } from "@/features/multi-user/components/LearnerProfileEditor";
 import { GuardianRelationshipsEditor } from "@/features/multi-user/components/GuardianRelationshipsEditor";
+import { MultiUserSetup } from "@/features/multi-user/components/MultiUserSetup";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { filterUsersByQuery } from "@/lib/admin-users";
@@ -58,6 +59,8 @@ export default function AdminUsersPage() {
   const { t, i18n } = useTranslation();
   const lang: Language = i18n.language?.startsWith("zh") ? "zh" : "en";
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [setupNeeded, setSetupNeeded] = useState(false);
+  const [nativeAccounts, setNativeAccounts] = useState(false);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -107,7 +110,12 @@ export default function AdminUsersPage() {
         router.replace("/");
         return;
       }
+      if (!status.enabled) {
+        setSetupNeeded(true);
+        return;
+      }
       setCurrentUser(status.username ?? null);
+      setNativeAccounts(Boolean(status.native_accounts));
       void load();
     });
   }, [router, load]);
@@ -296,6 +304,8 @@ export default function AdminUsersPage() {
       selectedUsernameSet.has(user.username),
     );
 
+  if (setupNeeded) return <MultiUserSetup />;
+
   return (
     <div className="h-screen overflow-y-auto bg-[var(--background)] px-4 py-10 [scrollbar-gutter:stable]">
       <div className="mx-auto max-w-3xl">
@@ -308,7 +318,7 @@ export default function AdminUsersPage() {
             <ArrowLeft size={16} />
             {t("Back")}
           </Link>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="font-serif text-xl font-semibold text-[var(--foreground)]">
                 {t("User Management")}
@@ -414,7 +424,7 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-sm">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-x-auto shadow-sm">
           {loading ? (
             <div className="divide-y divide-[var(--border)]" aria-hidden>
               {[0, 1, 2].map((row) => (
@@ -672,14 +682,16 @@ export default function AdminUsersPage() {
                               userId={user.id}
                               lockLearningPolicy={user.preset === "learner"}
                             />
-                            <BookPermissionEditor userId={user.id} />
+                            {!nativeAccounts && (
+                              <BookPermissionEditor userId={user.id} />
+                            )}
                             {user.preset === "learner" && (
                               <>
                                 <GuardianRelationshipsEditor
-                                  learnerId={user.id}
-                                  learnerUsername={user.username}
-                                  users={users}
-                                />
+                                    learnerId={user.id}
+                                    learnerUsername={user.username}
+                                    users={users}
+                                  />
                                 <LearnerProfileEditor
                                   username={user.username}
                                 />

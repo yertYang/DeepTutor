@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
+import { useRuntimeFeature } from "@/hooks/useRuntimeFeature";
+import { notify } from "@/lib/notifications";
 
 import { useVoiceAutoplayPreference } from "@/hooks/useVoiceAutoplay";
 import { useVoiceMathSpeakPreference } from "@/hooks/useVoiceMathSpeak";
@@ -51,7 +53,20 @@ function PlaybackToggle({
 
 export function VoicePlaybackPrefs() {
   const { t } = useTranslation();
+  const available = useRuntimeFeature("speech_synthesis");
+  if (!available)
+    return (
+      <p role="status" className="mb-8 text-xs text-[var(--muted-foreground)]">
+        {t("Speech playback is not available in this runtime.")}
+      </p>
+    );
+  return <AvailableVoicePlaybackPrefs />;
+}
+
+function AvailableVoicePlaybackPrefs() {
+  const { t } = useTranslation();
   const autoplay = useVoiceAutoplayPreference();
+  const supportsMathSpeak = useRuntimeFeature("voice_math_speak");
   const mathSpeak = useVoiceMathSpeakPreference();
   return (
     <section className="mb-8">
@@ -71,17 +86,33 @@ export function VoicePlaybackPrefs() {
           )}
           value={autoplay.value}
           loading={autoplay.loading}
-          onChange={autoplay.setValue}
+          onChange={(next) => {
+            void autoplay
+              .setValue(next)
+              .catch(() =>
+                notify(t("Could not save voice preferences."), {
+                  tone: "error",
+                }),
+              );
+          }}
         />
-        <PlaybackToggle
+        {supportsMathSpeak && <PlaybackToggle
           label={t("Math speak")}
           description={t(
             "Read LaTeX as words — fractions, powers, and Greek letters. Turn this off to keep formulas closer to the written math. Dollar signs are never spoken.",
           )}
           value={mathSpeak.value}
           loading={mathSpeak.loading}
-          onChange={mathSpeak.setValue}
-        />
+          onChange={(next) => {
+            void mathSpeak
+              .setValue(next)
+              .catch(() =>
+                notify(t("Could not save voice preferences."), {
+                  tone: "error",
+                }),
+              );
+          }}
+        />}
       </div>
     </section>
   );

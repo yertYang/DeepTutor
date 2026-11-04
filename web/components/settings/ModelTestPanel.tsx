@@ -2,6 +2,7 @@
 
 import { CheckCircle2, CircleAlert, FlaskConical, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useRuntimeFeature } from '@/hooks/useRuntimeFeature'
 import {
   useSettings,
   type CatalogModel,
@@ -23,6 +24,7 @@ export function ModelTestPanel({
   model?: CatalogModel | null
 }) {
   const { t } = useTranslation()
+  const available = useRuntimeFeature('model_diagnostics')
   const { draft, modelTests, testRunning, runDetailedTest, mutateCatalog } = useSettings()
   const result = modelTests[modelTestKey(service, profile.id, model?.id)]
   const current =
@@ -72,7 +74,7 @@ export function ModelTestPanel({
         </div>
         <button
           type="button"
-          disabled={!usable || testRunning !== null}
+          disabled={!available || !usable || testRunning !== null}
           onClick={() =>
             void runDetailedTest(service, {
               profileId: profile.id,
@@ -86,7 +88,7 @@ export function ModelTestPanel({
         </button>
       </div>
       <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
-        {service === 'llm' || service === 'task'
+        {!available ? t('Model diagnostics are not available in this runtime.') : service === 'llm' || service === 'task'
           ? t(
               'Sends a short request and detects the context window using these settings. Your active model stays unchanged.'
             )

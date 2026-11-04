@@ -2,6 +2,7 @@
 
 import { Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 
 import { CAPABILITY_LABEL, type Capability } from "@/lib/capability-routes";
 
@@ -31,10 +32,11 @@ export function LockedFeatureNotice({
         </h2>
         <p className="text-sm leading-relaxed text-[var(--muted-foreground)]">
           {t(
-            "Your account doesn't have {{model}} assigned yet. Please contact your administrator to get access.",
+            "Configure your own API key or ask your administrator to assign {{model}}.",
             { model: modelLabel },
           )}
         </p>
+        <Link href="/profile#models" className="rounded-lg bg-[var(--foreground)] px-4 py-2 text-sm text-[var(--background)]">{t("Configure personal API keys")}</Link>
       </div>
     </div>
   );

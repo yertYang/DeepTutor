@@ -16,6 +16,8 @@ pub const SURFACES: [&str; 7] = [
 pub const SLOTS: [&str; 4] = ["recent", "profile", "scope", "preferences"];
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ToolFlags {
+    #[serde(default)]
+    pub allowed_tools: Option<Vec<String>>,
     pub notebooks: bool,
     pub memory: bool,
     #[serde(default)]
@@ -581,6 +583,7 @@ fn flags(conn: &Connection, scope: &str) -> Result<ToolFlags> {
         |r| r.get(0),
     )?;
     Ok(ToolFlags {
+        allowed_tools: None,
         notebooks,
         memory,
         knowledge_bases: Vec::new(),

@@ -4,7 +4,7 @@ import { browserStorage } from "@/shared/storage";
 
 import { useCallback, useEffect, useState } from "react";
 
-import { apiFetch, apiUrl } from "@/lib/api";
+import { apiFetch, apiUrl, requestJson } from "@/lib/api";
 
 // Three-state autoplay model:
 //   • global default — persisted per-user (Settings › Voice → ui.voice_autoplay)
@@ -93,18 +93,23 @@ export function useVoiceAutoplayPreference() {
   }, []);
 
   const setValue = useCallback(async (next: boolean) => {
-    setVal(next);
-    cachedGlobal = next;
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent(GLOBAL_EVENT, { detail: { value: next } }),
-      );
+    setLoading(true);
+    try {
+      await requestJson(apiUrl("/api/settings/voice-autoplay"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_autoplay: next }),
+      });
+      setVal(next);
+      cachedGlobal = next;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(GLOBAL_EVENT, { detail: { value: next } }),
+        );
+      }
+    } finally {
+      setLoading(false);
     }
-    await apiFetch(apiUrl("/api/settings/voice-autoplay"), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ voice_autoplay: next }),
-    });
   }, []);
 
   return { value, setValue, loading };
@@ -137,8 +142,7 @@ export function useVoiceAutoplay(scopeKey?: string) {
       setGlobalDefault(Boolean((e as CustomEvent).detail?.value));
     const onSession = (e: Event) => {
       const detail = (e as CustomEvent).detail as
-        | { scopeKey?: string; value?: boolean }
-        | undefined;
+        { scopeKey?: string; value?: boolean } | undefined;
       if ((detail?.scopeKey || undefined) !== normalizedScopeKey) return;
       setSessionOverride(Boolean(detail?.value));
     };

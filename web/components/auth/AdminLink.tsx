@@ -14,9 +14,9 @@ interface AdminLinkProps {
 export function AdminLink({ collapsed = false }: AdminLinkProps) {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const { enabled, isAdmin } = useAuthStatus();
+  const { isAdmin, authenticated, statusAvailable } = useAuthStatus();
 
-  if (!enabled || !isAdmin) return null;
+  if (!statusAvailable || !authenticated || !isAdmin) return null;
 
   const active = pathname.startsWith("/admin");
 
@@ -50,7 +50,7 @@ export function AdminLink({ collapsed = false }: AdminLinkProps) {
         }`}
     >
       <ShieldCheck size={16} strokeWidth={1.5} />
-      <span>{t("Admin")}</span>
+      <span>{t("User Management")}</span>
     </Link>
   );
 }

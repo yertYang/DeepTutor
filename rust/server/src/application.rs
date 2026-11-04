@@ -87,8 +87,11 @@ pub async fn blocking<T: Send + 'static>(
         .map_err(|_| Error::conflict("Native storage task failed."))?
 }
 pub struct Application {
+    pub accounts: Arc<crate::accounts::Accounts>,
+    pub(crate) tenants: Mutex<HashMap<String, Arc<Application>>>,
     pub settings: Arc<Settings>,
     pub store: Store,
+    pub(crate) diagnostics: crate::diagnostics::Runtime,
     pub browser_jobs: crate::browser_testing::Jobs,
     pub(crate) voice: Arc<crate::voice::Runtime>,
     pub codex_login: crate::oauth_web::WebLogin,
@@ -104,12 +107,22 @@ pub struct Application {
 impl Application {
     pub fn open(home: &Path) -> Result<Arc<Self>> {
         let settings = Arc::new(Settings::open(home)?);
+        let accounts = Arc::new(crate::accounts::Accounts::open(&settings)?);
         crate::ocr::reset();
+        Self::with_settings(settings, accounts)
+    }
+    fn with_settings(
+        settings: Arc<Settings>,
+        accounts: Arc<crate::accounts::Accounts>,
+    ) -> Result<Arc<Self>> {
         let db = settings.user_root.join("chat_history.db");
         crate::config::safe_path(&settings.user_root, &db)?;
         let store = Store::open(&db)?;
         store.recover()?;
         Ok(Arc::new(Self {
+            accounts,
+            tenants: Mutex::new(HashMap::new()),
+            diagnostics: Default::default(),
             browser_jobs: Default::default(),
             voice: Default::default(),
             codex_login: Default::default(),
@@ -126,6 +139,25 @@ impl Application {
             admission: Mutex::new(()),
             running: Mutex::new(HashMap::new()),
         }))
+    }
+    pub(crate) async fn for_account(self: &Arc<Self>, user: &Value) -> Result<Arc<Self>> {
+        if user["role"] == "admin" {
+            return Ok(self.clone());
+        }
+        let id = text(user, "id").to_owned();
+        let mut tenants = self.tenants.lock().await;
+        if let Some(app) = tenants.get(&id) {
+            return Ok(app.clone());
+        }
+        let settings = self.settings.clone();
+        let accounts = self.accounts.clone();
+        let key = id.clone();
+        let app = blocking(move || {
+            Self::with_settings(Arc::new(Settings::for_account(settings, &key)?), accounts)
+        })
+        .await?;
+        tenants.insert(id, app.clone());
+        Ok(app)
     }
     pub async fn start(self: &Arc<Self>, request: Value) -> Result<Admission> {
         self.resume_pending().await?;
@@ -169,10 +201,36 @@ impl Application {
         let settings = self.settings.clone();
         let interface = blocking(move || crate::settings_api::interface(&settings)).await?;
         let capability = Capability::parse(text(&request, "capability"))?;
+        let account_policy =
+            if let (Some(root), Some(id)) = (&self.settings.shared, &self.settings.account_id) {
+                let user = self.accounts.user(id)?;
+                let policy = crate::accounts_api::policy(root, &user)?;
+                if capability == Capability::TestCases {
+                    return Err(crate::accounts::forbidden());
+                }
+                if !policy.is_null()
+                    && (capability != Capability::Chat
+                        || !policy["allowed_capabilities"]
+                            .as_array()
+                            .is_some_and(|a| a.iter().any(|c| c == "chat")))
+                {
+                    return Err(Error::new(
+                        axum::http::StatusCode::FORBIDDEN,
+                        "learning_policy",
+                        "This capability is disabled for your account.",
+                    ));
+                }
+                policy
+            } else {
+                Value::Null
+            };
         let language =
             crate::language::resolve(&request, preferences, &interface["response_language"])?;
         let mut instructions =
             crate::language::instructions(&request, preferences, &interface["response_language"])?;
+        if !account_policy.is_null() {
+            instructions.push_str("\n\nAct as a patient teacher. Explain with age-appropriate examples, guide the learner step by step, and avoid instructions for unsafe activities. The teacher persona is fixed by the administrator.");
+        }
         let settings = self.settings.clone();
         let workspace = text(&request, "workspace_id").to_owned();
         let workspace_instructions =
@@ -207,15 +265,14 @@ impl Application {
         let flags = blocking(move || {
             let mut flags = crate::learning::bootstrap(&settings, &scoped_store, &scope)?;
             flags.search = crate::search::select(&settings, &enabled, &optional)?;
-            flags.browser = crate::browser_testing::selection(
-                &scoped_store.connect()?,
-                &scope,
-                if capability == Capability::TestCases {
-                    &Value::Null
-                } else {
-                    &optional
-                },
-            )?;
+            flags.browser = if capability == Capability::TestCases {
+                Some(crate::browser_testing::test_selection(
+                    &scoped_store.connect()?,
+                    &scope,
+                )?)
+            } else {
+                crate::browser_testing::selection(&scoped_store.connect()?, &scope, &optional)?
+            };
             flags.knowledge_bases =
                 crate::knowledge::selection(&scoped_store.connect()?, &scope, &kbs)?;
             flags.study_target =
@@ -227,6 +284,32 @@ impl Application {
                 &memory_target,
                 capability,
             )?;
+            if let (Some(root), Some(id)) = (&settings.shared, &settings.account_id) {
+                let grant = crate::accounts::grant(root, id)?;
+                flags.browser = None;
+                if !account_policy.is_null() {
+                    flags = Default::default();
+                } else if let Some(tools) = grant["enabled_tools"].as_array() {
+                    flags.allowed_tools = Some(
+                        tools
+                            .iter()
+                            .filter_map(|v| v.as_str().map(str::to_owned))
+                            .collect(),
+                    );
+                    flags.notebooks &= tools
+                        .iter()
+                        .any(|v| v == "list_favorites" || v == "save_favorite");
+                    flags.memory &= tools
+                        .iter()
+                        .any(|v| v == "read_memory" || v == "write_memory");
+                    if !tools.iter().any(|v| v == "web_search") {
+                        flags.search = None;
+                    }
+                    if !tools.iter().any(|v| v == "rag") {
+                        flags.knowledge_bases.clear();
+                    }
+                }
+            }
             if flags.proposal.is_some() {
                 flags.notebooks = false;
                 flags.memory = false;
@@ -742,6 +825,19 @@ impl Application {
         self.stopping.subscribe()
     }
     pub async fn shutdown(&self) {
+        let tenants = self
+            .tenants
+            .lock()
+            .await
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        for tenant in tenants {
+            tenant.shutdown_local().await;
+        }
+        self.shutdown_local().await;
+    }
+    async fn shutdown_local(&self) {
         for cancel in self.browser_jobs.running.lock().await.values() {
             let _ = cancel.send(true);
         }

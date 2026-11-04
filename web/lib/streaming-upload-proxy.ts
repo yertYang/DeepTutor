@@ -47,7 +47,7 @@ function forwardedHeaders(
 
 /**
  * Stream a large multipart upload to the backend without materializing it in the
- * Next.js process. The two matching App Router endpoints are excluded from
+ * Next.js process. Matching multipart App Router endpoints are excluded from
  * `proxy.ts`, whose automatic request clone otherwise truncates large batches.
  */
 export async function forwardBackendUpload(

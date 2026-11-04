@@ -6,6 +6,7 @@ const LLM_OPTIONS_CACHE_KEY = "llm-options:list";
 const DEFAULT_LLM_OPTIONS_TIMEOUT_MS = 30_000;
 
 export interface LLMOption extends Omit<LLMSelection, "reasoning_effort"> {
+  source?: "personal" | "admin";
   profile_name: string;
   model_name: string;
   model: string;

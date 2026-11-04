@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useRuntimeFeature } from '@/hooks/useRuntimeFeature'
 import { useSettings } from '@/features/settings/store/SettingsStore'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { modelTestFingerprint } from '@/lib/model-settings'
@@ -29,7 +30,16 @@ export function VoiceDiscoveryField({
   update: (value: string) => void
   disabled: boolean
 }) {
+  const { t } = useTranslation()
+  const available = useRuntimeFeature('voice_discovery')
+  const playback = useRuntimeFeature('speech_synthesis')
   const { draft } = useSettings()
+  if (!available) return playback ? (
+    <label className="block space-y-1.5 text-xs font-medium">
+      <span>{t('Voice ID')}</span>
+      <input className={inputClass} value={value} disabled={disabled} onChange={e => update(e.target.value)} />
+    </label>
+  ) : null
   // Changing a voice must not itself start another account lookup.
   const snapshot = structuredClone(draft)
   const model = snapshot.services.tts.profiles

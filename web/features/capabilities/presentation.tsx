@@ -85,8 +85,8 @@ export const CHAT_CAPABILITIES: ChatCapabilityDef[] = [
   },
   {
     value: "test_cases",
-    label: "Write Test Cases",
-    description: "Write structured test cases and verify website behavior",
+    label: "Test",
+    description: "Open a URL, operate the website and verify results",
     icon: ListChecks,
     allowedTools: ["web_search"],
     defaultTools: [],

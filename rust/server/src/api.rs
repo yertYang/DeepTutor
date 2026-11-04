@@ -24,7 +24,13 @@ use tokio::{sync::mpsc, task::JoinHandle};
 
 type App = Arc<Application>;
 pub fn router(app: App) -> Router {
+    crate::accounts_api::router(app.clone())
+        .layer(middleware::from_fn_with_state(app, local_request))
+}
+pub(crate) fn workspace_router(app: App) -> Router {
     Router::new()
+        .merge(crate::accounts_api::protected())
+        .merge(crate::update_api::router())
         .merge(crate::settings_api::router())
         .merge(crate::learning_api::router())
         .merge(crate::knowledge_api::router())
@@ -41,7 +47,6 @@ pub fn router(app: App) -> Router {
         .route("/api/health", get(health))
         .route("/api/native/status", get(native_status))
         .route("/api/native/metrics", get(native_metrics))
-        .route("/api/auth/status", get(auth_status))
         .route("/api/settings/catalog", get(catalog).put(save_catalog))
         .route("/api/settings/llm-options", get(options))
         .route("/api/settings/fetch-models", post(discover))
@@ -78,7 +83,6 @@ pub fn router(app: App) -> Router {
             Error::unsupported("This endpoint has not yet been migrated to the Rust server.")
         })
         .layer(DefaultBodyLimit::max(2 * 1024 * 1024))
-        .layer(middleware::from_fn(local_request))
         .with_state(app)
 }
 fn loopback_host(host: &str) -> bool {
@@ -88,9 +92,10 @@ fn loopback_host(host: &str) -> bool {
             .parse::<std::net::IpAddr>()
             .is_ok_and(|ip| ip.is_loopback())
 }
-async fn local_request(request: Request, next: Next) -> Response {
-    // Local single-user mode must not become a DNS-rebinding or cross-origin
-    // settings endpoint. Bind restrictions alone don't protect browser requests.
+async fn local_request(State(app): State<App>, request: Request, next: Next) -> Response {
+    // The API stays on loopback; Next forwards the original frontend authority.
+    // Multi-user deployments accept their same-origin frontend and explicitly
+    // configured direct API origins, never an arbitrary credentialed origin.
     let host = request
         .headers()
         .get("host")
@@ -115,7 +120,31 @@ async fn local_request(request: Request, next: Next) -> Response {
             .ok()
             .and_then(|s| reqwest::Url::parse(s).ok());
         if !origin.as_ref().is_some_and(|u| {
-            matches!(u.scheme(), "http" | "https") && u.host_str().is_some_and(loopback_host)
+            if !matches!(u.scheme(), "http" | "https") {
+                return false;
+            }
+            if !app.accounts.is_enabled() {
+                return u.host_str().is_some_and(loopback_host);
+            }
+            let frontend = request
+                .headers()
+                .get("x-deeptutor-frontend-host")
+                .and_then(|h| h.to_str().ok());
+            frontend
+                .and_then(|h| reqwest::Url::parse(&format!("{}://{h}", u.scheme())).ok())
+                .is_some_and(|h| {
+                    h.host_str() == u.host_str()
+                        && h.port_or_known_default() == u.port_or_known_default()
+                })
+                || host.as_ref().is_some_and(|h| {
+                    h.host_str() == u.host_str()
+                        && h.port_or_known_default() == u.port_or_known_default()
+                })
+                || app
+                    .accounts
+                    .origins
+                    .iter()
+                    .any(|s| s == u.origin().ascii_serialization().as_str())
         }) {
             return Error::new(
                 StatusCode::FORBIDDEN,
@@ -151,17 +180,16 @@ async fn local_request(request: Request, next: Next) -> Response {
         }
         headers.append("vary", axum::http::HeaderValue::from_static("Origin"));
     }
+    response.headers_mut().insert(
+        "cache-control",
+        axum::http::HeaderValue::from_static("no-store"),
+    );
     response
 }
 async fn health() -> Json<Value> {
     Json(json!({"status":"ok","ready":true,"backend":"rust","protocol_version":"2.0"}))
 }
-async fn auth_status() -> Json<Value> {
-    Json(
-        json!({"enabled":false,"authenticated":true,"user_id":null,"username":null,"role":"admin","is_admin":true,"avatar":"","preset":null,"learning_policy":null}),
-    )
-}
-async fn native_status() -> Json<Value> {
+async fn native_status(State(app): State<App>) -> Json<Value> {
     let capability_tools = Capability::ALL
         .into_iter()
         .map(|capability| {
@@ -180,7 +208,7 @@ async fn native_status() -> Json<Value> {
         "tools":["session_info","ask_user","solve_plan","solve_finish_step","solve_replan"],
         "capability_tools":capability_tools,
         "context_tools":{"notebooks":["list_favorites","save_favorite"],"memory":["read_memory","write_memory"],"selected_knowledge_bases":["rag"],"optional":["web_search","browser_test"]},
-        "browser_testing":{"declarative_cases":true,"screenshots":true,"playwright_export":true,"isolated_contexts":true},
+        "browser_testing":{"declarative_cases":true,"screenshots":true,"playwright_export":true,"isolated_contexts":true,"interactive_sessions":true,"user_provided_urls":true,"file_inputs":true,"xlsx_results":true,"preserves_originals":true},
         "realtime_voice":{"provider":"personaplex","external_service_required":true,"languages":["en"],"audio_storage":false,"automatic_tools":false},
         "learning_features":{"authored_documents":true,"document_versions":true,"document_block_editor":true,"document_ai":true,"favorites_crud":true,"model_summary":true,"memory_documents":true,"memory_versions":true,"legacy_learning_import":true,"native_lexical_knowledge":true,"knowledge_binary_parsers":true,"knowledge_source_clips":true,"knowledge_ocr":crate::ocr::available(),"memory_consolidation":true,"memory_provenance_graph":true,"memory_cleanup_proposals":true},
         "client_transports":["websocket_v2","http_polling"],
@@ -188,12 +216,14 @@ async fn native_status() -> Json<Value> {
         "waiting_input_recovery":true,
         "tool_limits":{
             "model_rounds":8,
-            "capability_rounds":{"chat":8,"ask_questions":8,"deep_solve":12,"test_cases":12},
+            "capability_rounds":{"chat":8,"ask_questions":8,"deep_solve":12,"test_cases":32},
+            "capability_calls":{"test_cases":64},
             "calls":16,
             "argument_bytes":65536
         },
         "migration_complete":false,
-        "mode":"local-single-user"
+        "mode":if app.accounts.is_enabled(){"multi-user"}else{"local-single-user"},
+        "account_features":{"authentication":true,"user_management":true,"model_grants":true,"data_isolation":true,"shared_books":false,"guardian_relationships":false}
     }))
 }
 
@@ -428,8 +458,18 @@ async fn turn_events(
         json!({"events":app.events(&id,page.after_seq.unwrap_or(0).max(0)).await?}),
     ))
 }
-async fn capabilities() -> Json<Value> {
-    Json(Capability::registered())
+async fn capabilities(State(app): State<App>) -> Result<Json<Value>> {
+    let mut value = Capability::registered();
+    if let (Some(root), Some(id)) = (&app.settings.shared, &app.settings.account_id) {
+        let policy = crate::accounts_api::policy(root, &app.accounts.user(id)?)?;
+        value["capabilities"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|entry| {
+                entry["id"] != "test_cases" && (policy.is_null() || entry["id"] == "chat")
+            });
+    }
+    Ok(Json(value))
 }
 
 async fn discover(State(app): State<App>, Json(body): Json<Value>) -> Result<Json<Value>> {
@@ -542,6 +582,7 @@ async fn websocket(
     State(app): State<App>,
     Query(page): Query<Page>,
     headers: HeaderMap,
+    principal: Option<axum::Extension<crate::accounts_api::Principal>>,
     upgrade: WebSocketUpgrade,
 ) -> Response {
     let workspace = page.dt_workspace.or(page.workspace_id).unwrap_or_default();
@@ -550,14 +591,23 @@ async fn websocket(
     let _ = headers;
     upgrade
         .max_message_size(2 * 1024 * 1024)
-        .on_upgrade(move |socket| socket_loop(app, socket, workspace))
+        .on_upgrade(move |socket| socket_loop(app, socket, workspace, principal.map(|p| p.0)))
 }
-async fn socket_loop(app: App, socket: WebSocket, workspace: String) {
+async fn socket_loop(
+    app: App,
+    socket: WebSocket,
+    workspace: String,
+    principal: Option<crate::accounts_api::Principal>,
+) {
     let (mut sink, mut source) = socket.split();
     let (tx, mut rx) = mpsc::channel::<Value>(64);
     let writer_app = app.clone();
+    let writer_principal = principal.clone();
     let writer = tokio::spawn(async move {
         while let Some(value) = rx.recv().await {
+            if !crate::accounts_api::session_valid(&writer_app, &writer_principal).await {
+                break;
+            }
             if sink
                 .send(Message::Text(value.to_string().into()))
                 .await
@@ -572,11 +622,22 @@ async fn socket_loop(app: App, socket: WebSocket, workspace: String) {
     });
     let mut subscriptions: HashMap<String, JoinHandle<()>> = HashMap::new();
     let mut stopping = app.shutdown_receiver();
+    let mut auth_check = tokio::time::interval(Duration::from_secs(1));
     loop {
         if *stopping.borrow() {
             break;
         }
-        let message = tokio::select! {_=stopping.changed()=>break,message=source.next()=>message};
+        let message = tokio::select! {
+            _=stopping.changed()=>break,
+            _=auth_check.tick()=>{
+                if !crate::accounts_api::session_valid(&app,&principal).await {break;}
+                continue;
+            },
+            message=source.next()=>message
+        };
+        if !crate::accounts_api::session_valid(&app, &principal).await {
+            break;
+        }
         let Some(Ok(message)) = message else { break };
         let Message::Text(raw) = message else {
             if matches!(message, Message::Close(_)) {

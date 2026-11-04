@@ -44,6 +44,7 @@ import {
   ATTACHMENT_ACCEPT,
 } from "@/lib/doc-attachments";
 import { useTranslation } from "react-i18next";
+import TestSourceImporter, {type TestSourceImportHandle, type TestSource} from '@/features/browser-testing/TestSourceImporter';
 
 import type { SelectedHistorySession } from "@/components/chat/HistorySessionPicker";
 import type { SelectedQuestionEntry } from "@/components/chat/QuestionBankPicker";
@@ -526,6 +527,9 @@ export default memo(function ChatComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const restoreFocusOnReturnRef = useRef(false);
   const inputHandleRef = useRef<ComposerInputHandle>(null);
+  const testImporterRef = useRef<TestSourceImportHandle>(null);
+  const [testFilesBusy, setTestFilesBusy] = useState(false);
+  const isTestMode = activeCap?.value === 'test_cases';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftAttachmentsRef = useRef(attachments);
   const addDraftFilesRef = useRef(onAddFiles);
@@ -786,17 +790,21 @@ export default memo(function ChatComposer({
   const recorder = useVoiceRecorder(handleTranscript);
 
   const handlePickFiles = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+    if (isTestMode) testImporterRef.current?.pick();
+    else fileInputRef.current?.click();
+  }, [isTestMode]);
 
   const handleFileInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const picked = Array.from(event.target.files ?? []);
-      if (picked.length) onAddFiles(picked);
+      if (picked.length) {
+        if (isTestMode) testImporterRef.current?.upload(picked);
+        else onAddFiles(picked);
+      }
       // Reset so picking the same file twice still triggers `change`.
       event.target.value = "";
     },
-    [onAddFiles],
+    [onAddFiles, isTestMode],
   );
 
   const focusTextarea = useCallback(() => {
@@ -870,6 +878,7 @@ export default memo(function ChatComposer({
       // Keyboard and button submissions share the same admission checks.
       // A refused submission must leave the draft in the input.
       if (isStreaming && !awaitingUserReply) return false;
+      if (isTestMode && testFilesBusy) return false;
       if (capabilityNeedsConfig && !capabilityConfigConfirmed) {
         onRequestConfigConfirm();
         return false;
@@ -900,7 +909,7 @@ export default memo(function ChatComposer({
       return true;
     },
     [awaitingUserReply, capabilityConfigConfirmed, capabilityNeedsConfig,
-      cancelDraftSave, enqueueDraftWrite, focusTextarea, isStreaming, onRequestConfigConfirm, onSend],
+      cancelDraftSave, enqueueDraftWrite, focusTextarea, isStreaming, onRequestConfigConfirm, onSend, isTestMode, testFilesBusy],
   );
 
   const { board: taskBoard } = useTaskBoard();
@@ -942,7 +951,7 @@ export default memo(function ChatComposer({
   // mid-turn is sent (queued) and Stop moves to a button of its own.
   const queuing = Boolean(queueWhileStreaming) && isStreaming && !awaitingUserReply;
   const streamingBlocksSend = isStreaming && !awaitingUserReply && !(queuing && hasIntent);
-  const canSend = hasIntent && !streamingBlocksSend && !isConfigBlocked;
+  const canSend = hasIntent && !streamingBlocksSend && !isConfigBlocked && !(isTestMode && testFilesBusy);
 
   // `blocked` only exists once there is intent: without it the button stays
   // `idle` so an empty composer doesn't present a live send affordance. That
@@ -950,7 +959,7 @@ export default memo(function ChatComposer({
   // the `blocked` state can stay clickable and surface the config card.
   const sendState: SendState = streamingBlocksSend
     ? "streaming"
-    : !hasIntent
+    : !hasIntent || (isTestMode && testFilesBusy)
       ? "idle"
       : isConfigBlocked
         ? "blocked"
@@ -1287,7 +1296,13 @@ export default memo(function ChatComposer({
           onDragEnter={onDragEnter}
           onDragLeave={onDragLeave}
           onDragOver={onDragOver}
-          onDrop={onDrop}
+          onDrop={event=>{
+            if (isTestMode && event.dataTransfer.files.length) {
+              event.preventDefault(); event.stopPropagation();
+              dragCounter.current=1; onDragLeave(event);
+              testImporterRef.current?.upload(Array.from(event.dataTransfer.files));
+            } else onDrop(event);
+          }}
           data-drag-counter={dragCounter.current}
         >
           {dragging && (
@@ -1316,6 +1331,12 @@ export default memo(function ChatComposer({
           />
 
           {inputHeader}
+          {isTestMode&&<div className="px-4 py-3"><TestSourceImporter ref={testImporterRef} workspaceId={workspaceId} disabled={isStreaming} onBusy={setTestFilesBusy} onImported={(sources:TestSource[])=>{
+            const current=inputHandleRef.current?.getValue()||'';
+            const references=sources.map(source=>source.name).join('\n');
+            const next=[current,t('Imported test files:'),references].filter(Boolean).join('\n');
+            inputHandleRef.current?.setValue(next);
+          }}/></div>}
           {attachments.map((file, index) =>
             isQuoteAttachment(file) ? (
               <QuotedPassage
@@ -1364,7 +1385,7 @@ export default memo(function ChatComposer({
             replyLanguageDisabled={replyLanguageDisabled}
             onReplyLanguageChange={onReplyLanguageChange}
             languagePickerBelow={!hasMessages && !docked}
-            placeholder={inputPlaceholder ?? (createKindDef ? t(createKindDef.placeholderKey) : undefined)}
+            placeholder={inputPlaceholder ?? (createKindDef ? t(createKindDef.placeholderKey) : activeCap?.value === "test_cases" ? t("Provide a website URL and describe what you want me to test or do") : undefined)}
             placeholderCompletion={inputPlaceholderCompletion}
             minHeight={hasMessages || docked ? 28 : 64}
             lead={leadTokens}
@@ -1581,7 +1602,7 @@ export default memo(function ChatComposer({
                   <button
                     type="button"
                     onClick={recorder.toggle}
-                    disabled={recorder.state === "transcribing" || isStreaming}
+                    disabled={recorder.state === "transcribing" || recorder.state === "checking" || isStreaming}
                     className={`group relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] transition-[background-color,color,transform] duration-150 active:scale-90 disabled:opacity-40 ${
                       recorder.state === "recording"
                         ? "bg-red-500/15 text-red-500"
@@ -1592,7 +1613,7 @@ export default memo(function ChatComposer({
                     {recorder.state === "recording" && (
                       <span className="pointer-events-none absolute inset-0 rounded-[10px] border border-red-500/40 animate-pulse" />
                     )}
-                    {recorder.state === "transcribing" ? (
+                    {recorder.state === "transcribing" || recorder.state === "checking" ? (
                       <Loader2
                         size={16}
                         strokeWidth={1.9}

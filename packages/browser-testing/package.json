@@ -7,6 +7,8 @@
     "node": ">=22"
   },
   "scripts": {
+    "test": "node --test session.test.mjs native.test.mjs",
+    "test:ui": "node --test ui.test.mjs",
     "install:browser": "playwright install chromium"
   },
   "dependencies": {

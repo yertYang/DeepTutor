@@ -59,6 +59,9 @@ impl Capability {
         }
     }
     pub fn max_rounds(self) -> usize {
+        if self == Self::TestCases {
+            return 32;
+        }
         if matches!(self, Self::DeepSolve | Self::TestCases) || self.is_study() {
             12
         } else {

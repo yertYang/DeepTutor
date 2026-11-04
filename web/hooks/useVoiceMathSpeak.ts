@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { apiFetch, apiUrl } from "@/lib/api";
+import { apiFetch, apiUrl, requestJson } from "@/lib/api";
 
 const GLOBAL_EVENT = "deeptutor:voice-math-speak";
 
@@ -56,18 +56,23 @@ export function useVoiceMathSpeakPreference() {
   }, []);
 
   const setValue = useCallback(async (next: boolean) => {
-    setVal(next);
-    cached = next;
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent(GLOBAL_EVENT, { detail: { value: next } }),
-      );
+    setLoading(true);
+    try {
+      await requestJson(apiUrl("/api/settings/voice-math-speak"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_math_speak: next }),
+      });
+      setVal(next);
+      cached = next;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(GLOBAL_EVENT, { detail: { value: next } }),
+        );
+      }
+    } finally {
+      setLoading(false);
     }
-    await apiFetch(apiUrl("/api/settings/voice-math-speak"), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ voice_math_speak: next }),
-    });
   }, []);
 
   return { value, setValue, loading };

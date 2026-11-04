@@ -18,6 +18,14 @@ pub fn router() -> Router<App> {
         .route("/api/settings", get(settings))
         .route("/api/settings/ui", get(ui).put(update_ui))
         .route(
+            "/api/settings/voice-autoplay",
+            axum::routing::put(update_ui),
+        )
+        .route(
+            "/api/settings/voice-math-speak",
+            axum::routing::put(update_ui),
+        )
+        .route(
             "/api/settings/draft",
             get(draft).put(save_draft).delete(discard_draft),
         )
@@ -56,6 +64,8 @@ pub fn router() -> Router<App> {
             get(enabled_tool_status).put(enabled_tools),
         )
         .route("/api/modules", get(modules))
+        .merge(crate::diagnostics::router())
+        .merge(crate::service_preview::router())
 }
 pub fn interface(settings: &Settings) -> Result<Value> {
     let path = settings.user_root.join("settings/interface.json");
@@ -93,8 +103,16 @@ async fn settings(State(app): State<App>) -> Result<Json<Value>> {
     let settings = app.settings.clone();
     Ok(Json(blocking(move||{
         let providers=provider_choices();
-        let connections=providers["llm"].as_array().unwrap().iter().filter(|p|p["auth_mode"]!="oauth").map(|p|json!({"provider":p["value"],"label":p["label"],"default_base_url":p["base_url"],"services":{"llm":{"provider":p["value"],"base_url":p["base_url"],"default_model":""}}})).collect::<Vec<_>>();
-        Ok(json!({"ui":interface(&settings)?,"catalog":redact(settings.catalog()?),"providers":providers,"connection_targets":connections,"task_kinds":[]}))
+        let connections=providers["llm"].as_array().unwrap().iter().filter(|p|p["auth_mode"]!="oauth").map(|p|{
+            let mut services=json!({"llm":{"provider":p["value"],"base_url":p["base_url"],"default_model":""}});
+            if let Some(speech)=providers["stt"].as_array().unwrap().iter().find(|s|s["value"]==p["value"]){
+                services["stt"]=json!({"provider":speech["value"],"base_url":speech["base_url"],"default_model":speech["default_model"]});
+            }
+            json!({"provider":p["value"],"label":p["label"],"default_base_url":p["base_url"],"services":services})
+        }).collect::<Vec<_>>();
+        let mut payload=json!({"ui":interface(&settings)?,"providers":providers,"connection_targets":connections,"task_kinds":[]});
+        if settings.shared.is_none(){payload["catalog"]=redact(settings.catalog()?);}
+        Ok(payload)
     }).await?))
 }
 async fn enabled_tool_status(State(app): State<App>) -> Result<Json<Value>> {
@@ -121,7 +139,12 @@ fn provider_choices() -> Value {
         json!({"value":id,"label":label,"base_url":url,"auth_mode":"api_key","requires_api_key":id!="ollama","supports_wire_api_selection":!anthropic,"api_formats":if anthropic{json!(["anthropic"])}else{json!(["auto","openai_chat","openai_responses"])},"default_api_format":if anthropic{"anthropic"}else{"auto"},"status":"supported"})
     }).collect::<Vec<_>>();
     llm.push(json!({"value":"openai_codex","label":"OpenAI Codex","base_url":"https://chatgpt.com/backend-api","auth_mode":"oauth","requires_api_key":false,"supports_wire_api_selection":false,"api_formats":[],"status":"supported"}));
-    json!({"llm":llm,"task":[],"embedding":[],"search":[{"value":"tavily","label":"Tavily","base_url":"https://api.tavily.com","requires_api_key":true,"status":"supported"},{"value":"serper","label":"Serper","base_url":"https://google.serper.dev","requires_api_key":true,"status":"supported"},{"value":"searxng","label":"SearXNG","base_url":"","requires_api_key":false,"status":"supported"}],"tts":[],"stt":[],"imagegen":[],"videogen":[]})
+    let stt = json!([
+        {"value":"openai","label":"OpenAI","base_url":"https://api.openai.com/v1","default_model":"whisper-1","requires_api_key":true,"status":"supported"},
+        {"value":"custom","label":"Custom (OpenAI-compatible audio)","base_url":"","default_model":"","requires_api_key":false,"status":"supported"},
+        {"value":"groq","label":"Groq","base_url":"https://api.groq.com/openai/v1","default_model":"whisper-large-v3-turbo","requires_api_key":true,"status":"supported"}
+    ]);
+    json!({"llm":llm,"task":llm,"embedding":[{"value":"openai","label":"OpenAI","base_url":"https://api.openai.com/v1","requires_api_key":true,"status":"supported"},{"value":"custom","label":"Custom (OpenAI-compatible)","base_url":"","requires_api_key":false,"status":"supported"}],"search":[{"value":"tavily","label":"Tavily","base_url":"https://api.tavily.com","requires_api_key":true,"status":"supported"},{"value":"serper","label":"Serper","base_url":"https://google.serper.dev","requires_api_key":true,"status":"supported"},{"value":"searxng","label":"SearXNG","base_url":"","requires_api_key":false,"status":"supported"}],"tts":[{"value":"openai","label":"OpenAI","base_url":"https://api.openai.com/v1","default_model":"tts-1","requires_api_key":true,"status":"supported"},{"value":"custom","label":"Custom (OpenAI-compatible audio)","base_url":"","requires_api_key":false,"status":"supported"}],"stt":stt,"imagegen":[{"value":"openai","label":"OpenAI","base_url":"https://api.openai.com/v1","requires_api_key":true,"status":"supported"},{"value":"custom","label":"Custom (OpenAI-compatible)","base_url":"","requires_api_key":false,"status":"supported"}],"videogen":[{"value":"openai","label":"OpenAI","base_url":"https://api.openai.com/v1","requires_api_key":true,"status":"supported"},{"value":"custom","label":"Custom (OpenAI-compatible)","base_url":"","requires_api_key":false,"status":"supported"}]})
 }
 async fn ui(State(app): State<App>) -> Result<Json<Value>> {
     let settings = app.settings.clone();
@@ -358,7 +381,7 @@ async fn apply_registry(State(app): State<App>, Json(edit): Json<Value>) -> Resu
         .await?,
     ))
 }
-async fn modules() -> Json<Value> {
+async fn modules(State(app): State<App>) -> Json<Value> {
     let mut value: Value = serde_json::from_str(include_str!("../assets/modules.json"))
         .expect("checked module inventory");
     if let Some(knowledge) = value["modules"]
@@ -368,6 +391,15 @@ async fn modules() -> Json<Value> {
         .find(|m| m["id"] == "knowledge")
     {
         knowledge["features"]["ocr"] = json!(crate::ocr::available());
+    }
+    if app.settings.shared.is_some() {
+        for module in value["modules"].as_array_mut().unwrap() {
+            if module["id"] == "browser-testing" || module["id"] == "realtime-voice" {
+                module["enabled"] = json!(false);
+                module["ready"] = json!(false);
+                module["issues"] = json!(["This service is managed by the administrator."]);
+            }
+        }
     }
     Json(value)
 }

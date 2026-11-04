@@ -33,6 +33,8 @@ pub async fn start(
     }
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", backend_port)).await?;
     let address = listener.local_addr()?;
+    crate::browser_testing::block_control_port(address.port());
+    crate::browser_testing::block_control_port(frontend_port);
     let backend = format!("http://{address}");
     let mut frontend = tokio::process::Command::new(node)
         .arg(web.join("server.js"))
@@ -41,7 +43,6 @@ pub async fn start(
         .env("PORT", frontend_port.to_string())
         .env("NODE_ENV", "production")
         .env("DEEPTUTOR_API_BASE_URL", &backend)
-        .env("DEEPTUTOR_AUTH_ENABLED", "false")
         .env("NEXT_TELEMETRY_DISABLED", "1")
         .env_remove("ELECTRON_RUN_AS_NODE")
         .kill_on_drop(true)

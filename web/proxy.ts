@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseAuthEnabled } from "./lib/api";
 import { resolveBackendApiBase } from "./lib/backend-runtime-config";
 import { prepareBackendForwardHeaders } from "./lib/backend-forward";
 import {
   CODEX_CALLBACK_API_PATH,
   COOKIE_NAME,
   LOGIN_PATH,
-  classifyToken,
   isAuthExempt,
   isBackendPath,
   isCodexCallbackPath,
@@ -23,10 +21,6 @@ import {
 // host that name may resolve to ::1 first, while the native launcher binds
 // the backend to 127.0.0.1, causing an IPv6 connection to fail.
 const API_BASE_URL = resolveBackendApiBase();
-
-const AUTH_ENABLED = parseAuthEnabled(
-  process.env.DEEPTUTOR_AUTH_ENABLED ?? process.env.NEXT_PUBLIC_AUTH_ENABLED,
-);
 
 // Redirect to the login page, preserving the intended destination in `next`.
 // A present-but-invalid cookie is cleared so the browser stops resending it;
@@ -47,7 +41,7 @@ function redirectToLogin(
   return response;
 }
 
-export function proxy(req: NextRequest): NextResponse {
+export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname, search } = req.nextUrl;
 
   if (isCodexCallbackPath(pathname)) {
@@ -74,17 +68,25 @@ export function proxy(req: NextRequest): NextResponse {
     });
   }
 
-  // 2. Auth gate — multi-user mode only. Disabled by default, and never blocks
-  //    auth pages, Next.js internals, or public static assets (see
-  //    isAuthExempt: that exemption is what keeps the logo/banner images
-  //    loading once login is enabled — issue #599).
-  if (!AUTH_ENABLED || isAuthExempt(pathname)) {
+  if (isAuthExempt(pathname)) {
     return NextResponse.next();
   }
 
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  if (classifyToken(token, Date.now()) !== "valid") {
-    return redirectToLogin(req, { clearCookie: Boolean(token) });
+  // Ask the running backend, including after enabling multi-user mode without
+  // a rebuild. A cookie's presence or unverified payload is never authority.
+  try {
+    const response = await fetch(new URL("/api/auth/status", API_BASE_URL), {
+      headers: { cookie: req.headers.get("cookie") ?? "" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) throw new Error("Authentication unavailable");
+    const status = await response.json();
+    if (status.enabled && !status.authenticated) {
+      return redirectToLogin(req, { clearCookie: Boolean(req.cookies.get(COOKIE_NAME)) });
+    }
+  } catch {
+    return new NextResponse("Authentication service unavailable", { status: 503 });
   }
 
   return NextResponse.next();
@@ -93,7 +95,7 @@ export function proxy(req: NextRequest): NextResponse {
 export const config = {
   // Run on every request except Next.js internals and the favicon. The /api/*
   // and /ws/* paths are explicitly handled above (rewritten to the backend);
-  // Knowledge-base creation and upload requests that carry multipart bodies
+  // Speech recordings, knowledge-base creation and upload requests with multipart bodies
   // are handled by dedicated App Router endpoints that stream directly to
   // the backend. The browser's list call uses /api/knowledge-bases/list so it can
   // pass through the normal backend rewrite below. Excluding multipart routes
@@ -103,6 +105,6 @@ export const config = {
   // optimizer's loopback fetch for the source image (e.g. /logo.png) is let
   // through the auth gate by isAuthExempt.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/knowledge-bases(?:$|/[^/]+/upload(?:/|$))).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/knowledge-bases(?:$|/[^/]+/upload(?:/|$))|api/browser-testing/sources$|api/voice/stt$).*)",
   ],
 };

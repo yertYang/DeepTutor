@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Loader2, Volume2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useRuntimeFeature } from '@/hooks/useRuntimeFeature'
 import { useSettings } from '@/features/settings/store/SettingsStore'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { modelTestFingerprint } from '@/lib/model-settings'
@@ -19,7 +20,10 @@ export function VoicePreviewPanel({
   modelId: string
   maxChars?: number
 }) {
+  const { t } = useTranslation()
+  const available = useRuntimeFeature('speech_synthesis')
   const { draft } = useSettings()
+  if (!available) return <p role="status" className="p-4 text-xs text-[var(--muted-foreground)]">{t('Speech playback is not available in this runtime.')}</p>
   // A different model, voice, language, parameter or credential invalidates the
   // clip and aborts any request, including late completions from old selections.
   return (

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FlaskConical, Loader2, Square } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useRuntimeFeature } from '@/hooks/useRuntimeFeature'
 import {
   useSettings,
   type CatalogModel,
@@ -40,7 +41,10 @@ function safeLink(value: string) {
 
 /** Replacing the edited connection/model aborts its request and releases media. */
 export function ServicePreviewPanel(props: Props) {
+  const { t } = useTranslation()
+  const available = useRuntimeFeature(`service_preview_${props.service}`)
   const { draft } = useSettings()
+  if (!available) return <p role="status" className="p-4 text-xs text-[var(--muted-foreground)]">{t('This service preview is not available in this runtime.')}</p>
   return (
     <Preview
       key={modelTestFingerprint(draft, props.service, props.profile.id, props.model?.id)}
@@ -58,6 +62,7 @@ function Preview({ service, profile, model }: Props) {
   const [result, setResult] = useState<Result | null>(null)
   const [state, setState] = useState('idle')
   const [phase, setPhase] = useState('requesting')
+  const [error, setError] = useState('')
   const request = useRef<AbortController | null>(null)
   const mediaUrl = useRef('')
   const running = state === 'running'
@@ -79,6 +84,7 @@ function Preview({ service, profile, model }: Props) {
   }, [file])
   function clearResult() {
     setResult(null)
+    setError('')
     setState('idle')
     if (mediaUrl.current) URL.revokeObjectURL(mediaUrl.current)
     mediaUrl.current = ''
@@ -122,7 +128,11 @@ function Preview({ service, profile, model }: Props) {
           content_type: contentType,
         }),
       })
-      if (!response.ok || !response.body) throw new Error('request')
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { detail?: string; message?: string }
+        throw new Error(payload.message || payload.detail || t('Request failed (HTTP {{status}}).', { status: response.status }))
+      }
+      if (!response.body) throw new Error('Request failed')
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
@@ -142,6 +152,7 @@ function Preview({ service, profile, model }: Props) {
             if (event.type === 'progress')
               setPhase(event.phase === 'rendering' ? 'rendering' : 'requesting')
             if (event.type === 'error') {
+              setError(typeof event.message === 'string' ? event.message : '')
               setState(event.code === 'timeout' ? 'timeout' : 'failed')
               completed = true
             }
@@ -169,8 +180,11 @@ function Preview({ service, profile, model }: Props) {
         await reader.cancel().catch(() => {})
         reader.releaseLock()
       }
-    } catch {
-      if (!controller.signal.aborted) setState('failed')
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        setError(err instanceof Error ? err.message : '')
+        setState('failed')
+      }
     } finally {
       clearTimeout(timeout)
       if (request.current === controller) request.current = null
@@ -194,6 +208,7 @@ function Preview({ service, profile, model }: Props) {
           {t(`settings.servicePreview.description.${service}`)}
         </p>
       </div>
+      {error && <p role="alert" className="text-xs text-red-600">{t(error)}</p>}
       {service === 'stt' ? (
         <div className="space-y-3">
           <label className="block space-y-2 text-xs font-medium">

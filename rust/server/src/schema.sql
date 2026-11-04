@@ -122,6 +122,17 @@ CREATE TABLE IF NOT EXISTS native_browser_artifacts(
  workspace_id TEXT NOT NULL,id TEXT NOT NULL,run_id TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL,data BLOB NOT NULL,
  PRIMARY KEY(workspace_id,id),FOREIGN KEY(workspace_id,run_id) REFERENCES native_browser_runs(workspace_id,id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS native_browser_sources(
+ workspace_id TEXT NOT NULL,id TEXT NOT NULL,name TEXT NOT NULL,content TEXT NOT NULL,original_content TEXT NOT NULL,
+ original BLOB NOT NULL,current BLOB NOT NULL,revision INTEGER NOT NULL DEFAULT 0,created_at REAL NOT NULL,
+ PRIMARY KEY(workspace_id,id)
+);
+CREATE TABLE IF NOT EXISTS native_browser_exports(
+ workspace_id TEXT NOT NULL,id TEXT NOT NULL,source_id TEXT NOT NULL,name TEXT NOT NULL,
+ data BLOB NOT NULL,payload_json TEXT NOT NULL,created_at REAL NOT NULL,
+ PRIMARY KEY(workspace_id,id),
+ FOREIGN KEY(workspace_id,source_id) REFERENCES native_browser_sources(workspace_id,id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS native_memory_maintenance(workspace_id TEXT PRIMARY KEY,payload_json TEXT NOT NULL);
 
