@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "node ./scripts/dev.mjs",
     "predev": "node ./scripts/copy-pdfjs-assets.mjs && node ./scripts/copy-voice-assets.mjs",
+    "dev:low-memory": "node ./scripts/dev.mjs --low-memory",
+    "predev:low-memory": "node ./scripts/copy-pdfjs-assets.mjs && node ./scripts/copy-voice-assets.mjs",
     "dev:turbo": "node ./scripts/dev.mjs --turbopack",
     "predev:turbo": "node ./scripts/copy-pdfjs-assets.mjs && node ./scripts/copy-voice-assets.mjs",
     "build": "node ./scripts/build.mjs",

@@ -15,47 +15,38 @@
  * swapping long before that.
  *
  * Setting the ceiling here fixes both halves — the worker inherits NODE_OPTIONS,
- * and Next stops overriding it. Keep Next's 50% rule so small machines are not
- * handed a heap larger than their RAM, but cap it: past a few GB the extra
- * headroom buys a slower death, not a working dev server. An explicit
- * NODE_OPTIONS ceiling from the developer always wins.
+ * and Next stops overriding it. Budget V8 separately from Turbopack's native
+ * cache (see dev-memory.cjs and next.config.js). An explicit NODE_OPTIONS
+ * ceiling from the developer always wins.
  */
 
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import memory from "./dev-memory.cjs";
 
-const HEAP_CEILING_MB = 4096;
 const WEB_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const NEXT_BIN = path.join(WEB_DIR, "node_modules", "next", "dist", "bin", "next");
 
-/** Memory this process may actually use, in MB — cgroup limit included so the
- *  container dev stage sizes to its own budget rather than the host's RAM. */
-function memoryBudgetMB() {
-  let bytes = os.totalmem();
-  try {
-    const limit = Number(readFileSync("/sys/fs/cgroup/memory.max", "utf8").trim());
-    if (Number.isFinite(limit) && limit > 0) bytes = Math.min(bytes, limit);
-  } catch {
-    // No cgroup v2 limit (macOS, Windows, unconstrained container).
+const { nodeOptions } = memory.devMemorySettings();
+const args = process.argv.slice(2);
+const lowMemory = args.includes("--low-memory");
+const nextArgs = args.filter((arg) => arg !== "--low-memory");
+if (lowMemory) {
+  if (nextArgs.some((arg) => ["--turbo", "--turbopack"].includes(arg))) {
+    throw new Error("--low-memory uses Webpack; remove --turbo/--turbopack");
   }
-  return Math.floor(bytes / 1024 / 1024);
+  if (!nextArgs.includes("--webpack")) nextArgs.push("--webpack");
 }
 
-const inherited = process.env.NODE_OPTIONS ?? "";
-const nodeOptions = /--max[-_]old[-_]space[-_]size/.test(inherited)
-  ? inherited
-  : `${inherited} --max-old-space-size=${Math.min(
-      HEAP_CEILING_MB,
-      Math.floor(memoryBudgetMB() * 0.5),
-    )}`.trim();
-
-const child = spawn(process.execPath, [NEXT_BIN, "dev", ...process.argv.slice(2)], {
+const child = spawn(process.execPath, [NEXT_BIN, "dev", ...nextArgs], {
   cwd: WEB_DIR,
   stdio: "inherit",
-  env: { ...process.env, NODE_OPTIONS: nodeOptions },
+  env: {
+    ...process.env,
+    NODE_OPTIONS: nodeOptions,
+    ...(lowMemory ? { DEEPTUTOR_DEV_LOW_MEMORY: "1" } : {}),
+  },
 });
 
 // Let Next own the terminal: forward the signals it already handles (lock file
@@ -66,4 +57,8 @@ for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 child.on("exit", (code, signal) => {
   if (signal) process.kill(process.pid, signal);
   else process.exit(code ?? 0);
+});
+child.on("error", (error) => {
+  console.error(error);
+  process.exit(1);
 });

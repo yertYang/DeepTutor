@@ -3,6 +3,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { devMemorySettings } = require("./scripts/dev-memory.cjs");
 
 function readJsonFile(filePath) {
   try {
@@ -124,10 +125,20 @@ const nextConfig = {
   // create/upload batches use dedicated streaming route handlers instead, so
   // their total size is not coupled to this in-memory clone limit.
   experimental: {
+    // A soft GC target for Turbopack's native cache, outside NODE_OPTIONS.
+    ...(process.env.NODE_ENV === "development"
+      ? { turbopackMemoryLimit: devMemorySettings().turboBytes }
+      : {}),
     proxyClientMaxBodySize: 210 * 1024 * 1024,
     // Agentic reads and full-draft edits routinely exceed Next's 30-second
     // rewrite default; the browser remains responsible for cancelling them.
     proxyTimeout: 30 * 60 * 1000,
+  },
+
+  onDemandEntries: {
+    // Webpack only: discard inactive pages sooner in the low-memory profile.
+    maxInactiveAge: process.env.DEEPTUTOR_DEV_LOW_MEMORY === "1" ? 30_000 : 60_000,
+    pagesBufferLength: process.env.DEEPTUTOR_DEV_LOW_MEMORY === "1" ? 1 : 2,
   },
 
   // Move dev indicator to bottom-right corner
@@ -182,8 +193,16 @@ const nextConfig = {
   },
 
   // Webpack configuration (used for production builds - next build)
-  webpack: (config) => {
+  webpack: (config, { dev }) => {
     const path = require("path");
+    if (dev && process.env.DEEPTUTOR_DEV_LOW_MEMORY === "1") {
+      config.parallelism = 2;
+      if (config.cache && config.cache.type === "filesystem") {
+        // Retain the disk cache without also keeping deserialized modules alive.
+        config.cache.maxMemoryGenerations = 0;
+        config.cache.allowCollectingMemory = true;
+      }
+    }
     config.module.rules.push({
       test: /locales[/\\]en[/\\]app\.json$/,
       type: "javascript/auto",
