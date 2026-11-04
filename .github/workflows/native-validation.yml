@@ -10,6 +10,7 @@ on:
       - "scripts/native-study-acceptance.mjs"
       - "scripts/native-reading-acceptance.mjs"
       - "scripts/native-web-reading-acceptance.mjs"
+      - "scripts/native-mastery-acceptance.mjs"
       - "scripts/native-calendar-flashcards-acceptance.mjs"
       - "scripts/desktop-releases.test.mjs"
       - "scripts/desktop-media-permissions.test.mjs"
@@ -59,6 +60,8 @@ jobs:
         run: node scripts/native-calendar-flashcards-acceptance.mjs
       - name: Exercise frozen reading context and synthetic model discussion
         run: node scripts/native-web-reading-acceptance.mjs
+      - name: Exercise mastery prerequisites, fresh evidence and review scheduling
+        run: node scripts/native-mastery-acceptance.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -68,4 +71,5 @@ jobs:
             dist/native-reading-acceptance/*.json
             dist/native-calendar-flashcards-acceptance/*.json
             dist/native-web-reading-acceptance/*.json
+            dist/native-mastery-acceptance/*.json
           if-no-files-found: ignore

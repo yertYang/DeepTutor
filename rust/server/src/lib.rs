@@ -68,3 +68,5 @@ pub mod flashcards;
 mod flashcards_api;
 
 mod web_reading;
+
+pub mod mastery;

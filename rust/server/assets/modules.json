@@ -85,16 +85,20 @@
     },
     {
       "id": "mastery",
-      "installed": false,
-      "enabled": false,
-      "ready": false,
+      "installed": true,
+      "enabled": true,
+      "ready": true,
       "navigation": [
         "/mastery",
         "/learning/mastery"
       ],
-      "issues": [
-        "Not migrated to the independent Rust server."
-      ]
+      "issues": [],
+      "features": {
+        "native_study": true,
+        "first_exposure_evidence": true,
+        "prerequisites": true,
+        "spaced_review": true
+      }
     },
     {
       "id": "memory",

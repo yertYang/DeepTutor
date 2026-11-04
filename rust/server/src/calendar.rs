@@ -945,7 +945,12 @@ pub fn layers(c: &Connection, scope: &str, from: &str, to: &str, tz: &str) -> Re
     let progress = crate::study::progress(c, scope)?;
     let mut days = std::collections::BTreeMap::<String, Value>::new();
     for row in progress["objectives"].as_array().unwrap() {
-        let time = row["review_due_at"].as_f64().unwrap_or(0.0);
+        if row["status"] == "locked" {
+            continue;
+        }
+        let Some(time) = row["review_due_at"].as_f64() else {
+            continue;
+        };
         let Some(at) = DateTime::from_timestamp(time as i64, 0) else {
             continue;
         };
@@ -960,7 +965,7 @@ pub fn layers(c: &Connection, scope: &str, from: &str, to: &str, tz: &str) -> Re
         day["paths"]
             .as_array_mut()
             .unwrap()
-            .push(json!({"id":row["plan_id"],"title":row["objective_id"],"count":1}));
+            .push(json!({"id":row["plan_id"],"title":row["title"],"count":1}));
     }
     let sessions=c.prepare("SELECT id,title,created_at FROM sessions WHERE deleted_at IS NULL AND COALESCE(json_extract(preferences_json,'$.workspace_id'),'')=? AND created_at>=? AND created_at<? ORDER BY created_at LIMIT 10000")?.query_map(params![scope,start.timestamp() as f64,end.timestamp() as f64],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,f64>(2)?)))?.collect::<rusqlite::Result<Vec<_>>>()?;
     let mut footprints = std::collections::BTreeMap::<String, Value>::new();

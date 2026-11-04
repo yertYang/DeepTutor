@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { activeWorkspaceId, scopedUrl } from '@/lib/workspace-scope'
 import { browserStorage } from '@/shared/storage'
+import NativeMasteryMap from './NativeMasteryMap'
 import { FeaturePage, PageHeader, pageActionClass } from '@/components/layout/FeaturePage'
 const Markdown = dynamic(() => import('@/components/common/MarkdownRenderer'), { ssr: false })
 type Kind = 'deep_research' | 'deep_question' | 'mastery_path' | 'note_ai' | 'memory_consolidate'
@@ -47,7 +48,15 @@ type Objective = {
   plan_id: string
   objective_id: string
   correct_questions: number
-  review_due_at: number
+  review_due_at: number | null
+  title: string
+  plan_title: string
+  goals: string[]
+  status: 'locked' | 'ready' | 'practicing' | 'mastered' | 'review_due' | 'review_scheduled'
+  round_correct: number
+  round_required: number
+  review_stage: number
+  blocked_by: string[]
 }
 type Target = { plan_id: string; objective_id: string; title: string }
 type Draft = {
@@ -138,12 +147,15 @@ function PracticeQuestion({
   )
 }
 
-export default function NativeStudyWorkspace() {
+export default function NativeStudyWorkspace({
+  initialKind,
+  initialArtifactId,
+}: { initialKind?: Kind; initialArtifactId?: string } = {}) {
   const { t } = useTranslation()
   const router = useRouter()
   const params = useSearchParams()
   const [scope] = useState(activeWorkspaceId)
-  const key = `deeptutor.native-study:${scope}`
+  const key = `deeptutor.native-study:${scope}${initialKind ? `:${initialKind}:${initialArtifactId ?? ''}` : ''}`
   const initial = useRef<Draft | null>(null)
   if (initial.current === null) {
     try {
@@ -154,7 +166,7 @@ export default function NativeStudyWorkspace() {
     }
   }
   const [kind, setKind] = useState<Kind>(() => {
-    const value = params.get('kind') || initial.current?.kind
+    const value = params.get('kind') || initial.current?.kind || initialKind
     return value && Object.hasOwn(labels, value) ? (value as Kind) : 'deep_research'
   })
   const [content, setContent] = useState(
@@ -204,8 +216,8 @@ export default function NativeStudyWorkspace() {
   const [turns, setTurns] = useState<Turn[]>([])
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [objectives, setObjectives] = useState<Objective[]>([])
-  const [selected, setSelected] = useState(params.get('artifact_id') ?? '')
-  const linkedArtifact = params.get('artifact_id')
+  const [selected, setSelected] = useState(params.get('artifact_id') ?? initialArtifactId ?? '')
+  const linkedArtifact = params.get('artifact_id') ?? initialArtifactId
   useEffect(() => {
     if (linkedArtifact) setSelected(linkedArtifact)
   }, [linkedArtifact])
@@ -229,16 +241,28 @@ export default function NativeStudyWorkspace() {
     },
     [scope]
   )
+  const refreshSequence = useRef(0)
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current
     const [state, progress] = await Promise.all([
       request<{ artifacts: Artifact[]; turns: Turn[] }>('/api/study'),
       request<{ attempts: Attempt[]; objectives: Objective[] }>('/api/study/progress'),
     ])
+    if (
+      selected &&
+      !state.artifacts.some(a => a.id === selected) &&
+      !state.turns.some(
+        t => t.id === selected && ['queued', 'running', 'waiting_input'].includes(t.status)
+      )
+    ) {
+      state.artifacts.unshift(await request<Artifact>(`/api/study/${encodeURIComponent(selected)}`))
+    }
+    if (sequence !== refreshSequence.current) return
     setArtifacts(state.artifacts)
     setTurns(state.turns)
     setAttempts(progress.attempts)
     setObjectives(progress.objectives)
-  }, [request])
+  }, [request, selected])
   useEffect(() => {
     let active = true
     const load = () => {
@@ -381,7 +405,7 @@ export default function NativeStudyWorkspace() {
       setBusy(false)
     }
   }
-  const record = artifacts.find(row => row.id === selected) ?? artifacts[0]
+  const record = selected ? artifacts.find(row => row.id === selected) : artifacts[0]
   const saveNote = async () => {
     if (!record) return
     setBusy(true)
@@ -420,7 +444,7 @@ export default function NativeStudyWorkspace() {
   return (
     <FeaturePage>
       <PageHeader
-        title={t('Study workspace')}
+        title={t(initialKind ? labels[initialKind] : 'Study workspace')}
         description={t(
           'Research with source citations, practice with feedback, and build a learning path.'
         )}
@@ -433,6 +457,54 @@ export default function NativeStudyWorkspace() {
           {error}
         </p>
       )}
+      <section
+        className="mb-5 rounded-xl border border-[var(--border)] p-4"
+        aria-label={t('Review queue')}
+      >
+        <h2 className="mb-2 font-semibold">{t('Review queue')}</h2>
+        <p className="mb-3 text-sm text-[var(--muted-foreground)]">
+          {t(
+            'A round needs three new questions answered correctly on first exposure. Repeating a revealed answer does not postpone review.'
+          )}
+        </p>
+        {objectives
+          .filter(
+            o =>
+              o.status !== 'locked' &&
+              o.review_due_at !== null &&
+              o.review_due_at <= Date.now() / 1000
+          )
+          .map(o => (
+            <div
+              key={`${o.plan_id}:${o.objective_id}`}
+              className="my-2 flex flex-wrap items-center gap-3 rounded-lg border border-[var(--border)] p-3"
+            >
+              <span className="min-w-0 flex-1 break-words text-sm">
+                {o.plan_title} · {o.title}
+              </span>
+              <button
+                className={pageActionClass('secondary')}
+                onClick={() => {
+                  setSelected(o.plan_id)
+                  setKind('deep_question')
+                  setTarget({ plan_id: o.plan_id, objective_id: o.objective_id, title: o.title })
+                  setContent(
+                    `${o.title}\n${o.goals.join('\n')}\n${t('Generate new questions for a fresh review round.')}`
+                  )
+                  formRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+                }}
+              >
+                {t('Review now')}
+              </button>
+            </div>
+          ))}
+        {!objectives.some(
+          o =>
+            o.status !== 'locked' &&
+            o.review_due_at !== null &&
+            o.review_due_at <= Date.now() / 1000
+        ) && <p className="text-sm">{t('No objectives are due for review.')}</p>}
+      </section>
       <form
         ref={formRef}
         onSubmit={event => void start(event)}
@@ -710,6 +782,17 @@ export default function NativeStudyWorkspace() {
                 refresh={refresh}
               />
             ))}
+            {record.result?.units && (
+              <NativeMasteryMap
+                units={record.result.units}
+                progress={objectives.filter(o => o.plan_id === record.id)}
+                onSelect={id =>
+                  document
+                    .getElementById(`objective-${record.id}-${id}`)
+                    ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                }
+              />
+            )}
             {record.result?.units?.map(unit => {
               const progress = objectives.find(
                 o => o.plan_id === record.id && o.objective_id === unit.id
@@ -717,6 +800,7 @@ export default function NativeStudyWorkspace() {
               return (
                 <section
                   key={unit.id}
+                  id={`objective-${record.id}-${unit.id}`}
                   className="my-3 rounded-xl border border-[var(--border)] p-4"
                 >
                   <h3 className="font-medium">
@@ -734,13 +818,40 @@ export default function NativeStudyWorkspace() {
                     </p>
                   )}
                   {progress && (
-                    <p className="my-2 text-xs">
-                      {t('Correct questions')}: {progress.correct_questions} · {t('Review due')}:{' '}
-                      {new Date(progress.review_due_at * 1000).toLocaleDateString()}
-                    </p>
+                    <div className="my-2 space-y-1 text-xs">
+                      <p>
+                        {t('Objective status')}:{' '}
+                        {t(
+                          {
+                            locked: 'Prerequisites not completed',
+                            ready: 'Ready to practice',
+                            practicing: 'Practicing',
+                            mastered: 'Round completed',
+                            review_due: 'Review due now',
+                            review_scheduled: 'Review scheduled after a lapse',
+                          }[progress.status]
+                        )}
+                      </p>
+                      <p>
+                        {t(
+                          progress.status === 'mastered'
+                            ? 'Next review round'
+                            : 'Fresh correct answers in this round'
+                        )}
+                        : {progress.round_correct}/{progress.round_required} ·{' '}
+                        {t('Verified question evidence')}: {progress.correct_questions}
+                      </p>
+                      {progress.review_due_at !== null && (
+                        <p>
+                          {t('Review due')}:{' '}
+                          {new Date(progress.review_due_at * 1000).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
                   )}
                   <button
                     className={pageActionClass('secondary')}
+                    disabled={progress?.status === 'locked'}
                     onClick={() => {
                       setKind('deep_question')
                       setTarget({ plan_id: record.id, objective_id: unit.id, title: unit.title })

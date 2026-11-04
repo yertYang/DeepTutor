@@ -12,6 +12,7 @@ pub fn router() -> Router<App> {
         .route("/api/dashboard/learning-index", get(dashboard))
         .route("/api/study", get(list))
         .route("/api/study/progress", get(progress))
+        .route("/api/study/reviews", get(reviews))
         .route("/api/study/{id}", get(read))
         .route("/api/study/{id}/attempts", post(attempt))
         .route("/api/study/{id}/note", post(note))
@@ -25,6 +26,9 @@ async fn list(State(app): State<App>, Query(scope): Query<Scope>) -> Result<Json
 }
 async fn progress(State(app): State<App>, Query(scope): Query<Scope>) -> Result<Json<Value>> {
     crate::data_api::run(app, scope, false, |_, _| Ok(()), study::progress).await
+}
+async fn reviews(State(app): State<App>, Query(scope): Query<Scope>) -> Result<Json<Value>> {
+    crate::data_api::run(app, scope, false, |_, _| Ok(()), study::reviews).await
 }
 async fn read(
     State(app): State<App>,
