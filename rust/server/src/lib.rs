@@ -27,12 +27,16 @@ mod turn_queries;
 
 mod ask_user;
 
+pub mod calendar;
+mod calendar_api;
 pub mod capability;
 pub mod learning;
 mod learning_api;
 pub mod memory_graph;
 pub mod memory_maintenance;
 mod solve;
+pub mod task_board;
+pub mod task_board_api;
 
 mod generation;
 
@@ -59,3 +63,10 @@ pub mod search;
 pub mod documents;
 mod documents_api;
 pub mod memory_cli;
+
+pub mod flashcards;
+mod flashcards_api;
+
+mod web_reading;
+
+pub mod mastery;

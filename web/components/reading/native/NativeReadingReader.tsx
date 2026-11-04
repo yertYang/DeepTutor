@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import NativeReadingTutor from './NativeReadingTutor'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { FeaturePage, PageHeader, pageActionClass } from '@/components/layout/FeaturePage'
@@ -53,6 +54,7 @@ export default function NativeReadingReader({ itemId }: { itemId: string }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showTutor, setShowTutor] = useState(false)
   const [showPosition, setShowPosition] = useState(false)
   const [noteLinks, setNoteLinks] = useState<Record<string, string>>({})
   const root = useRef<HTMLDivElement>(null)
@@ -119,7 +121,9 @@ export default function NativeReadingReader({ itemId }: { itemId: string }) {
           requestAnimationFrame(() => {
             const row = document.getElementById(`L${target}`)
             const pane = root.current
-            if (row && pane) pane.scrollTop += row.getBoundingClientRect().top - pane.getBoundingClientRect().top - 16
+            if (row && pane)
+              pane.scrollTop +=
+                row.getBoundingClientRect().top - pane.getBoundingClientRect().top - 16
           })
       }
     },
@@ -212,6 +216,14 @@ export default function NativeReadingReader({ itemId }: { itemId: string }) {
         )}
         action={
           <>
+            <button
+              className={pageActionClass('secondary')}
+              disabled={!item}
+              aria-expanded={showTutor}
+              onClick={() => setShowTutor(v => !v)}
+            >
+              {t('Reading tutor')}
+            </button>
             <Link
               className={pageActionClass('secondary')}
               href={scopedUrl('/learning/reading', scope)}
@@ -261,10 +273,31 @@ export default function NativeReadingReader({ itemId }: { itemId: string }) {
         !error && <p>{t('Loading...')}</p>
       ) : (
         <>
+          {showTutor && (
+            <NativeReadingTutor
+              item={item}
+              scope={scope}
+              start={draft?.start_line ?? offset + 1}
+              end={draft?.end_line ?? Math.min(offset + PAGE, lines.length)}
+            />
+          )}
           <details className="mb-4 rounded-xl border border-[var(--border)] p-3">
             <summary className="cursor-pointer text-sm">{t('Reading document details')}</summary>
             <p className="my-3 break-all text-xs">
-              {item.kb} / {item.path}
+              {item.kind === 'web' && item.source_url ? (
+                <a
+                  href={item.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  {item.source_url}
+                </a>
+              ) : (
+                <>
+                  {item.kb} / {item.path}
+                </>
+              )}
               <br />
               SHA-256: {item.original_hash}
             </p>

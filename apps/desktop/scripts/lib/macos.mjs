@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { appRoot } from './target.mjs';
 import { PACKAGER, stageApp } from './stage.mjs';
+import { createDiskImage } from './dmg.mjs';
 
 /** Shared by platforms/macos-arm64 and platforms/macos-x64: a signed .app inside a DMG. */
 export async function packageMac(target) {
@@ -36,8 +37,7 @@ export async function packageMac(target) {
   await cp(bundle, path.join(dmgStage, 'Lorevia.app'), { recursive: true, verbatimSymlinks: true });
   await cp(path.join(built, 'LICENSES.chromium.html'), path.join(dmgStage, 'LICENSES.chromium.html'));
   await symlink('/Applications', path.join(dmgStage, 'Applications'));
-  await rm(dmg, { force: true });
-  execFileSync('/usr/bin/hdiutil', ['create', '-volname', 'Lorevia', '-srcfolder', dmgStage, '-fs', 'APFS', '-format', 'ULFO', dmg], { stdio: 'inherit' });
+  await createDiskImage(dmgStage, dmg);
   await rm(dmgStage, { recursive: true, force: true });
   return [bundle, dmg];
 }

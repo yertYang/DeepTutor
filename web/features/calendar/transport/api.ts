@@ -113,13 +113,30 @@ export function calendarStreamUrl(): string {
   return scopedUrl(`${endpoint}/stream`)
 }
 
+let observedRevision: number | null = null
+const pendingCommands = new Map<string, string>()
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = init?.method?.toUpperCase() || 'GET'
+  const changing = !['GET', 'HEAD'].includes(method)
+  const fingerprint = `${method}:${path}:${init?.body || ''}`
+  const headers = new Headers(init?.headers)
+  if (init?.body) headers.set('Content-Type', 'application/json')
+  if (changing) {
+    if (observedRevision === null) await json('/calendars')
+    if (!pendingCommands.has(fingerprint)) {
+      if (pendingCommands.size >= 128) pendingCommands.delete(pendingCommands.keys().next().value!)
+      pendingCommands.set(fingerprint, crypto.randomUUID())
+    }
+    headers.set('If-Match', `"${observedRevision}"`)
+    headers.set('Idempotency-Key', pendingCommands.get(fingerprint)!)
+  }
   const response = await apiFetch(`${endpoint}${path}`, {
     cache: 'no-store',
     ...init,
-    headers: init?.body ? { 'Content-Type': 'application/json', ...init.headers } : init?.headers,
+    headers,
   })
   if (!response.ok) {
+    if (response.status === 409) observedRevision = null
     let detail = ''
     try {
       detail = String((await response.json())?.detail ?? '')
@@ -128,7 +145,10 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new CalendarRequestError(response.status, detail)
   }
-  return response.json() as Promise<T>
+  const value = await response.json()
+  if (typeof value.revision === 'number') observedRevision = Math.max(observedRevision ?? 0, value.revision)
+  if (changing) pendingCommands.delete(fingerprint)
+  return value as T
 }
 
 export class CalendarRequestError extends Error {

@@ -116,6 +116,7 @@ pub fn target(
     {
         return Err(Error::missing());
     }
+    require_objective_ready(conn, scope, &target.plan_id, &target.objective_id)?;
     Ok(Some(target))
 }
 
@@ -289,6 +290,50 @@ fn evidence(conn: &Connection, scope: &str, m: &Mutation) -> Result<Value> {
         json!({"kind":"knowledge","title":file,"kb_name":kb,"path":file,"hash":hash,"start_line":first,"end_line":last,"quote":quote,"url":source_url(&kb,&file,&hash,scope,first)}),
     )
 }
+fn question_fingerprint(question: &Value) -> Result<String> {
+    use sha2::{Digest, Sha256};
+    let normalize = |value: &str| {
+        value
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase()
+    };
+    let choices = question["choices"]
+        .as_array()
+        .ok_or_else(|| Error::conflict("Invalid saved question choices."))?;
+    let answer = question["answer_index"]
+        .as_u64()
+        .and_then(|i| choices.get(i as usize))
+        .and_then(Value::as_str)
+        .ok_or_else(|| Error::conflict("Invalid saved correct answer."))?;
+    let mut choices = choices
+        .iter()
+        .map(|v| {
+            v.as_str()
+                .map(normalize)
+                .ok_or_else(|| Error::conflict("Invalid saved question choice."))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    choices.sort();
+    Ok(format!("{:x}",Sha256::digest(json!({"prompt":normalize(text(question,"prompt")),"choices":choices,"answer":normalize(answer)}).to_string())))
+}
+fn require_objective_ready(c: &Connection, s: &str, plan: &str, objective: &str) -> Result<()> {
+    let progress = progress(c, s)?;
+    let row = progress["objectives"]
+        .as_array()
+        .and_then(|a| {
+            a.iter()
+                .find(|v| v["plan_id"] == plan && v["objective_id"] == objective)
+        })
+        .ok_or_else(Error::missing)?;
+    if row["status"] == "locked" {
+        return Err(Error::invalid(
+            "Complete the prerequisite objectives before practicing this objective.",
+        ));
+    }
+    Ok(())
+}
 fn questions(
     conn: &Connection,
     scope: &str,
@@ -300,6 +345,8 @@ fn questions(
         .filter(|q| !q.is_empty() && q.len() <= 20)
         .ok_or_else(|| Error::invalid("Generate 1-20 questions."))?;
     let mut result = Vec::new();
+    let mut unique = std::collections::HashSet::new();
+    let eligibility = progress(conn, scope)?;
     for (i, q) in items.iter().enumerate() {
         let prompt = field(q, "prompt", 4000)?;
         let choices = strings(q, "choices", 6)?;
@@ -352,6 +399,25 @@ fn questions(
                     "Question refers to an unavailable learning objective.",
                 ));
             }
+        }
+        if !plan.is_empty() {
+            let ready = eligibility["objectives"]
+                .as_array()
+                .and_then(|a| {
+                    a.iter()
+                        .find(|r| r["plan_id"] == plan && r["objective_id"] == objective)
+                })
+                .ok_or_else(Error::missing)?;
+            if ready["status"] == "locked" {
+                return Err(Error::invalid(
+                    "Complete prerequisite objectives before generating questions for this objective.",
+                ));
+            }
+        }
+        if !unique.insert(question_fingerprint(q)?) {
+            return Err(Error::invalid(
+                "Practice questions must have distinct prompts and choices.",
+            ));
         }
         result.push(json!({"id":format!("Q{}",i+1),"prompt":prompt,"choices":choices,"answer_index":answer,"explanation":explanation,"plan_id":plan,"objective_id":objective}));
     }
@@ -505,7 +571,7 @@ pub fn attempt(conn: &Connection, scope: &str, id: &str, input: &Value) -> Resul
         .filter(|n| *n < question["choices"].as_array().map_or(0, Vec::len) as u64)
         .ok_or_else(|| Error::invalid("Choose a valid answer."))?;
     let correct = question["answer_index"] == answer;
-    let result = json!({"artifact_id":id,"question_id":question["id"],"answer_index":answer,"correct":correct,"correct_answer_index":question["answer_index"],"explanation":question["explanation"],"created_at":now(),"plan_id":question["plan_id"],"objective_id":question["objective_id"]});
+    let result = json!({"artifact_id":id,"question_id":question["id"],"answer_index":answer,"correct":correct,"correct_answer_index":question["answer_index"],"explanation":question["explanation"],"created_at":now(),"plan_id":question["plan_id"],"objective_id":question["objective_id"],"question_fingerprint":question_fingerprint(question)?});
     conn.execute(
         "INSERT INTO native_study_attempts VALUES (?,?,?)",
         params![scope, command, result.to_string()],
@@ -513,36 +579,67 @@ pub fn attempt(conn: &Connection, scope: &str, id: &str, input: &Value) -> Resul
     Ok(result)
 }
 pub fn progress(conn: &Connection, scope: &str) -> Result<Value> {
-    let rows=conn.prepare("SELECT payload_json FROM native_study_attempts WHERE workspace_id=? ORDER BY json_extract(payload_json,'$.created_at')")?.query_map([scope],|r|r.get::<_,String>(0))?.collect::<rusqlite::Result<Vec<_>>>()?;
-    let rows = rows
+    let rows = conn
+        .prepare(
+            "SELECT a.payload_json FROM native_study_attempts a JOIN native_study_evidence_order o ON o.workspace_id=a.workspace_id AND o.command_id=a.command_id WHERE a.workspace_id=? ORDER BY o.position",
+        )?
+        .query_map([scope], |r| r.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut rows = rows
         .into_iter()
-        .map(|s| {
-            serde_json::from_str::<Value>(&s)
+        .map(|raw| {
+            serde_json::from_str::<Value>(&raw)
                 .map_err(|_| Error::conflict("Invalid learning progress."))
         })
         .collect::<Result<Vec<_>>>()?;
+    let mut artifacts = std::collections::HashMap::<String, Value>::new();
+    for row in &mut rows {
+        if row["question_fingerprint"].is_string() {
+            continue;
+        }
+        let id = text(row, "artifact_id");
+        if !artifacts.contains_key(id) {
+            artifacts.insert(id.into(), raw(conn, scope, id)?);
+        }
+        let question = artifacts[id]["result"]["questions"]
+            .as_array()
+            .and_then(|a| a.iter().find(|q| q["id"] == row["question_id"]))
+            .ok_or_else(|| Error::conflict("Practice evidence refers to a missing question."))?;
+        row["question_fingerprint"] = json!(question_fingerprint(question)?);
+    }
+    let plans=conn.prepare("SELECT payload_json FROM native_study_artifacts WHERE workspace_id=? AND json_extract(payload_json,'$.kind')='mastery_path' AND json_extract(payload_json,'$.phase')='published' ORDER BY json_extract(payload_json,'$.created_at'),id")?.query_map([scope],|r|r.get::<_,String>(0))?.collect::<rusqlite::Result<Vec<_>>>()?.into_iter().map(|v|serde_json::from_str::<Value>(&v).map_err(|_|Error::conflict("Invalid saved learning path."))).collect::<Result<Vec<_>>>()?;
     let correct = rows.iter().filter(|r| r["correct"] == true).count();
-    let mut objectives: std::collections::HashMap<
-        (String, String),
-        (std::collections::HashSet<String>, f64),
-    > = Default::default();
-    for row in &rows {
-        if !text(row, "plan_id").is_empty() && row["correct"] == true {
-            let key = (
-                text(row, "plan_id").to_owned(),
-                text(row, "objective_id").to_owned(),
-            );
-            let item = objectives.entry(key).or_default();
-            item.0.insert(format!(
-                "{}:{}",
-                text(row, "artifact_id"),
-                text(row, "question_id")
-            ));
-            item.1 = item.1.max(row["created_at"].as_f64().unwrap_or(0.0));
+    let objectives = crate::mastery::summarize(&plans, &rows, now())?;
+    Ok(json!({"attempts":rows,"correct":correct,"total":rows.len(),"objectives":objectives}))
+}
+pub fn reviews(conn: &Connection, scope: &str) -> Result<Value> {
+    let progress = progress(conn, scope)?;
+    let at = now();
+    let mut due = Vec::new();
+    let mut upcoming = Vec::new();
+    for row in progress["objectives"].as_array().unwrap() {
+        if row["status"] == "locked" {
+            continue;
+        }
+        if let Some(time) = row["review_due_at"].as_f64() {
+            if time <= at {
+                due.push(row.clone());
+            } else {
+                upcoming.push(row.clone());
+            }
         }
     }
-    let objectives=objectives.into_iter().map(|((plan,id),(questions,last))|{let days=match questions.len(){0=>0,1=>1,2=>3,3=>7,_=>14};json!({"plan_id":plan,"objective_id":id,"correct_questions":questions.len(),"review_due_at":last+(days as f64)*86400.0})}).collect::<Vec<_>>();
-    Ok(json!({"attempts":rows,"correct":correct,"total":rows.len(),"objectives":objectives}))
+    let sort = |a: &Value, b: &Value| {
+        a["review_due_at"]
+            .as_f64()
+            .partial_cmp(&b["review_due_at"].as_f64())
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| text(a, "plan_id").cmp(text(b, "plan_id")))
+            .then_with(|| text(a, "objective_id").cmp(text(b, "objective_id")))
+    };
+    due.sort_by(sort);
+    upcoming.sort_by(sort);
+    Ok(json!({"due":due,"upcoming":upcoming,"generated_at":at}))
 }
 
 pub fn note(conn: &Connection, scope: &str, id: &str, input: &Value) -> Result<Value> {
@@ -1026,5 +1123,243 @@ mod tests {
             updated["content"]
         );
         assert_eq!(c.query_row("SELECT content FROM native_memory_versions WHERE workspace_id='w' AND layer='L3' AND key='preferences' ORDER BY id DESC LIMIT 1",[],|r|r.get::<_,String>(0)).unwrap(),"prefers examples\nprefers examples");
+    }
+}
+
+#[cfg(test)]
+mod mastery_workflow_tests {
+    use super::*;
+    fn db() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(include_str!("schema.sql")).unwrap();
+        c
+    }
+    fn mutation(id: &str, kind: &str, operation: &str, input: Value) -> Mutation {
+        Mutation {
+            turn: id.into(),
+            kind: kind.into(),
+            operation: operation.into(),
+            input,
+            knowledge: vec![],
+            web: false,
+            target: None,
+            proposal: None,
+        }
+    }
+    fn plan(c: &Connection, id: &str, kind: &str) {
+        apply(
+            c,
+            "w",
+            mutation(
+                id,
+                kind,
+                "study_plan",
+                json!({"title":id,"objectives":["Learn"]}),
+            ),
+        )
+        .unwrap();
+    }
+    fn path(c: &Connection) {
+        plan(c, "path", "mastery_path");
+        apply(c,"w",mutation("path","mastery_path","study_publish",json!({"units":[{"title":"Foundation","goals":["Basics"],"prerequisites":[]},{"title":"Application","goals":["Apply"],"prerequisites":[0]}]}))).unwrap();
+    }
+    fn questions(c: &Connection, id: &str, prompts: &[&str]) {
+        plan(c, id, "deep_question");
+        let questions=prompts.iter().map(|prompt|json!({"prompt":prompt,"choices":["Correct","Wrong"],"answer_index":0,"explanation":"Reason","plan_id":"path","objective_id":"O1"})).collect::<Vec<_>>();
+        apply(
+            c,
+            "w",
+            mutation(
+                id,
+                "deep_question",
+                "study_publish",
+                json!({"questions":questions}),
+            ),
+        )
+        .unwrap();
+    }
+    fn answer(c: &Connection, id: &str, q: &str, choice: u64) {
+        attempt(c,"w",id,&json!({"command_id":uuid::Uuid::new_v4().to_string(),"question_id":q,"answer_index":choice,"expected_revision":2})).unwrap();
+    }
+    #[test]
+    fn first_exposure_evidence_unlocks_prerequisites_and_exact_content_duplicates_do_not_inflate_it()
+     {
+        let c = db();
+        path(&c);
+        assert!(
+            target(
+                &c,
+                "w",
+                &json!({"plan_id":"path","objective_id":"O2"}),
+                crate::capability::Capability::DeepQuestion
+            )
+            .is_err()
+        );
+        questions(&c, "q", &["First?", "Second?", "Third?"]);
+        answer(&c, "q", "Q1", 1);
+        answer(&c, "q", "Q1", 0);
+        answer(&c, "q", "Q2", 0);
+        answer(&c, "q", "Q3", 0);
+        let before = progress(&c, "w").unwrap();
+        assert_eq!(before["objectives"][0]["correct_questions"], 2);
+        assert_eq!(before["objectives"][1]["status"], "locked");
+        questions(&c, "duplicate", &["  SECOND?  "]);
+        answer(&c, "duplicate", "Q1", 0);
+        assert_eq!(
+            progress(&c, "w").unwrap()["objectives"][0]["correct_questions"],
+            2
+        );
+        questions(&c, "fresh", &["Fourth?"]);
+        answer(&c, "fresh", "Q1", 0);
+        let next = progress(&c, "w").unwrap();
+        assert_eq!(next["objectives"][0]["status"], "mastered");
+        assert_eq!(next["objectives"][1]["status"], "ready");
+        assert!(
+            target(
+                &c,
+                "w",
+                &json!({"plan_id":"path","objective_id":"O2"}),
+                crate::capability::Capability::DeepQuestion
+            )
+            .unwrap()
+            .is_some()
+        );
+        assert_eq!(next["objectives"][0]["round_correct"], 0);
+        let before_due = next["objectives"][0]["review_due_at"].clone();
+        answer(&c, "fresh", "Q1", 0);
+        assert_eq!(
+            progress(&c, "w").unwrap()["objectives"][0]["review_due_at"],
+            before_due
+        );
+    }
+    #[test]
+    fn review_queue_restores_from_evidence_and_stays_workspace_scoped() {
+        let c = db();
+        path(&c);
+        questions(&c, "q", &["One?", "Two?", "Three?"]);
+        for q in ["Q1", "Q2", "Q3"] {
+            answer(&c, "q", q, 0);
+        }
+        c.execute("UPDATE native_study_attempts SET payload_json=json_set(payload_json,'$.created_at',? + rowid * 0.01)",[now()-2.*86400.]).unwrap();
+        let queue = reviews(&c, "w").unwrap();
+        assert_eq!(queue["due"].as_array().unwrap().len(), 1);
+        assert_eq!(queue["due"][0]["objective_id"], "O1");
+        assert_eq!(queue["due"][0]["title"], "Foundation");
+        assert_eq!(reviews(&c, "other").unwrap()["due"], json!([]));
+        let layers = crate::calendar::layers(
+            &c,
+            "w",
+            &(chrono::Utc::now() - chrono::Duration::days(2)).to_rfc3339(),
+            &(chrono::Utc::now() + chrono::Duration::days(2)).to_rfc3339(),
+            "UTC",
+        )
+        .unwrap();
+        assert_eq!(layers["reviews"][0]["paths"][0]["title"], "Foundation");
+    }
+    #[test]
+    fn reordered_duplicate_choices_and_locked_objective_references_are_rejected() {
+        let c = db();
+        path(&c);
+        plan(&c, "dup", "deep_question");
+        let before = read(&c, "w", "dup").unwrap();
+        let q = json!({"questions":[{"prompt":"Same?","choices":["A","B"],"answer_index":0,"explanation":"A"},{"prompt":"same?","choices":["B","A"],"answer_index":1,"explanation":"A"}]});
+        assert!(
+            apply(
+                &c,
+                "w",
+                mutation("dup", "deep_question", "study_publish", q)
+            )
+            .is_err()
+        );
+        assert_eq!(read(&c, "w", "dup").unwrap(), before);
+        let q = json!({"questions":[{"prompt":"Locked?","choices":["A","B"],"answer_index":0,"explanation":"A","plan_id":"path","objective_id":"O2"}]});
+        assert!(
+            apply(
+                &c,
+                "w",
+                mutation("dup", "deep_question", "study_publish", q)
+            )
+            .is_err()
+        );
+        assert_eq!(read(&c, "w", "dup").unwrap(), before);
+    }
+    #[test]
+    fn clock_rollback_cannot_turn_a_revealed_correction_into_first_exposure_evidence() {
+        let c = db();
+        path(&c);
+        questions(&c, "q", &["One?"]);
+        answer(&c, "q", "Q1", 1);
+        c.execute(
+            "UPDATE native_study_attempts SET payload_json=json_set(payload_json,'$.created_at',?)",
+            [now() + 3600.],
+        )
+        .unwrap();
+        answer(&c, "q", "Q1", 0);
+        let value = progress(&c, "w").unwrap();
+        assert_eq!(value["objectives"][0]["correct_questions"], 0);
+        assert_eq!(value["objectives"][0]["practice_correct_questions"], 1);
+        assert_eq!(value["objectives"][0]["round_correct"], 0);
+    }
+    #[test]
+    fn explicit_evidence_order_survives_rowid_reorganization_and_vacuum() {
+        let c = db();
+        path(&c);
+        questions(&c, "q", &["One?"]);
+        answer(&c, "q", "Q1", 1);
+        answer(&c, "q", "Q1", 0);
+        let before = progress(&c, "w").unwrap()["objectives"].clone();
+        c.execute("UPDATE native_study_attempts SET rowid=1000-rowid", [])
+            .unwrap();
+        assert_eq!(progress(&c, "w").unwrap()["objectives"], before);
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("vacuum.sqlite3");
+        c.execute("VACUUM INTO ?", [path.to_string_lossy().as_ref()])
+            .unwrap();
+        let restored = Connection::open(path).unwrap();
+        assert_eq!(progress(&restored, "w").unwrap()["objectives"], before);
+    }
+    #[test]
+    fn order_backfill_preserves_legacy_timestamp_bytes_and_is_idempotent() {
+        let c = db();
+        path(&c);
+        questions(&c, "q", &["One?"]);
+        answer(&c, "q", "Q1", 1);
+        answer(&c, "q", "Q1", 0);
+        let rows = || {
+            c.prepare("SELECT payload_json FROM native_study_attempts ORDER BY rowid")
+                .unwrap()
+                .query_map([], |r| r.get::<_, String>(0))
+                .unwrap()
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .unwrap()
+        };
+        let before = rows();
+        c.execute_batch("DROP TRIGGER native_study_evidence_order_insert;DROP TABLE native_study_evidence_order;").unwrap();
+        for _ in 0..2 {
+            c.execute_batch(include_str!("schema.sql")).unwrap();
+        }
+        assert_eq!(rows(), before);
+        assert_eq!(
+            c.query_row(
+                "SELECT seq FROM sqlite_sequence WHERE name='native_study_evidence_order'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            2
+        );
+        assert_eq!(
+            progress(&c, "w").unwrap()["objectives"][0]["correct_questions"],
+            0
+        );
+        assert_eq!(
+            c.query_row(
+                "SELECT COUNT(*) FROM native_study_evidence_order",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            2
+        );
     }
 }

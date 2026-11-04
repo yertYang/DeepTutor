@@ -9,8 +9,14 @@ on:
       - "VERSION"
       - "scripts/native-study-acceptance.mjs"
       - "scripts/native-reading-acceptance.mjs"
+      - "scripts/native-web-reading-acceptance.mjs"
+      - "scripts/native-mastery-acceptance.mjs"
+      - "scripts/native-calendar-flashcards-acceptance.mjs"
       - "scripts/desktop-releases.test.mjs"
       - "scripts/desktop-media-permissions.test.mjs"
+      - "scripts/desktop-dmg.test.mjs"
+      - "apps/desktop/scripts/lib/dmg.mjs"
+      - "apps/desktop/scripts/lib/macos.mjs"
       - "apps/desktop/src/media-permissions.mjs"
       - "web/lib/desktop-releases.ts"
       - ".github/workflows/native-validation.yml"
@@ -41,6 +47,8 @@ jobs:
         run: node --experimental-strip-types --test scripts/desktop-releases.test.mjs
       - name: Check desktop microphone permission boundaries
         run: node --test scripts/desktop-media-permissions.test.mjs
+      - name: Check transactional DMG publication and bounded busy-resource retries
+        run: node --test scripts/desktop-dmg.test.mjs
       - name: Check Rust warnings
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test native storage and lifecycle
@@ -53,6 +61,12 @@ jobs:
         run: node scripts/native-study-acceptance.mjs
       - name: Exercise isolated reading snapshots, annotations and restore
         run: node scripts/native-reading-acceptance.mjs
+      - name: Exercise native calendar, task board, flashcards and recovery
+        run: node scripts/native-calendar-flashcards-acceptance.mjs
+      - name: Exercise frozen reading context and synthetic model discussion
+        run: node scripts/native-web-reading-acceptance.mjs
+      - name: Exercise mastery prerequisites, fresh evidence and review scheduling
+        run: node scripts/native-mastery-acceptance.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -60,4 +74,7 @@ jobs:
           path: |
             dist/native-study-acceptance/*.json
             dist/native-reading-acceptance/*.json
+            dist/native-calendar-flashcards-acceptance/*.json
+            dist/native-web-reading-acceptance/*.json
+            dist/native-mastery-acceptance/*.json
           if-no-files-found: ignore

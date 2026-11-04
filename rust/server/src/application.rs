@@ -204,6 +204,7 @@ impl Application {
         let study_target = request["study_target"].clone();
         let document_target = request["document_target"].clone();
         let memory_target = request["memory_target"].clone();
+        let reading_target = request["reading_target"].clone();
         let flags = blocking(move || {
             let mut flags = crate::learning::bootstrap(&settings, &scoped_store, &scope)?;
             flags.search = crate::search::select(&settings, &enabled, &optional)?;
@@ -220,13 +221,31 @@ impl Application {
                 crate::knowledge::selection(&scoped_store.connect()?, &scope, &kbs)?;
             flags.study_target =
                 crate::study::target(&scoped_store.connect()?, &scope, &study_target, capability)?;
-            flags.proposal = crate::study::proposal(
-                &scoped_store.connect()?,
-                &scope,
-                &document_target,
-                &memory_target,
-                capability,
-            )?;
+            flags.proposal = if capability == Capability::ReadingTutor {
+                if !document_target.is_null() || !memory_target.is_null() {
+                    return Err(Error::invalid(
+                        "Select only the reading excerpt for reading discussion.",
+                    ));
+                }
+                Some(crate::reading::tutor_context(
+                    &scoped_store.connect()?,
+                    &scope,
+                    &reading_target,
+                )?)
+            } else {
+                if !reading_target.is_null() {
+                    return Err(Error::invalid(
+                        "Reading excerpts require the reading tutor capability.",
+                    ));
+                }
+                crate::study::proposal(
+                    &scoped_store.connect()?,
+                    &scope,
+                    &document_target,
+                    &memory_target,
+                    capability,
+                )?
+            };
             if flags.proposal.is_some() {
                 flags.notebooks = false;
                 flags.memory = false;
@@ -830,6 +849,7 @@ fn validate(request: &Value) -> Result<()> {
             "study_target",
             "document_target",
             "memory_target",
+            "reading_target",
         ]
         .contains(&key.as_str())
         {

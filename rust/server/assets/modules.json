@@ -25,15 +25,20 @@
     },
     {
       "id": "calendar",
-      "installed": false,
-      "enabled": false,
-      "ready": false,
+      "installed": true,
+      "enabled": true,
+      "ready": true,
       "navigation": [
         "/calendar"
       ],
-      "issues": [
-        "Not migrated to the independent Rust server."
-      ]
+      "issues": [],
+      "features": {
+        "native_storage": true,
+        "recurrence": true,
+        "reminders": true,
+        "ics_export": true,
+        "task_links": true
+      }
     },
     {
       "id": "co-writer",
@@ -48,7 +53,7 @@
         "native_editor": true,
         "ai_companion": false,
         "word_import": true,
-        "flashcards": false,
+        "flashcards": true,
         "reviewed_ai_edits": true
       }
     },
@@ -80,16 +85,20 @@
     },
     {
       "id": "mastery",
-      "installed": false,
-      "enabled": false,
-      "ready": false,
+      "installed": true,
+      "enabled": true,
+      "ready": true,
       "navigation": [
         "/mastery",
         "/learning/mastery"
       ],
-      "issues": [
-        "Not migrated to the independent Rust server."
-      ]
+      "issues": [],
+      "features": {
+        "native_study": true,
+        "first_exposure_evidence": true,
+        "prerequisites": true,
+        "spaced_review": true
+      }
     },
     {
       "id": "memory",
@@ -221,8 +230,8 @@
         "annotations": true,
         "note_clips": true,
         "export": true,
-        "web_reading": false,
-        "ai_reading_tutor": false,
+        "web_reading": true,
+        "ai_reading_tutor": true,
         "media": false
       }
     },
