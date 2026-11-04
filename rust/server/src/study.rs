@@ -581,7 +581,7 @@ pub fn attempt(conn: &Connection, scope: &str, id: &str, input: &Value) -> Resul
 pub fn progress(conn: &Connection, scope: &str) -> Result<Value> {
     let rows = conn
         .prepare(
-            "SELECT payload_json FROM native_study_attempts WHERE workspace_id=? ORDER BY rowid",
+            "SELECT a.payload_json FROM native_study_attempts a JOIN native_study_evidence_order o ON o.workspace_id=a.workspace_id AND o.command_id=a.command_id WHERE a.workspace_id=? ORDER BY o.position",
         )?
         .query_map([scope], |r| r.get::<_, String>(0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -1299,5 +1299,67 @@ mod mastery_workflow_tests {
         assert_eq!(value["objectives"][0]["correct_questions"], 0);
         assert_eq!(value["objectives"][0]["practice_correct_questions"], 1);
         assert_eq!(value["objectives"][0]["round_correct"], 0);
+    }
+    #[test]
+    fn explicit_evidence_order_survives_rowid_reorganization_and_vacuum() {
+        let c = db();
+        path(&c);
+        questions(&c, "q", &["One?"]);
+        answer(&c, "q", "Q1", 1);
+        answer(&c, "q", "Q1", 0);
+        let before = progress(&c, "w").unwrap()["objectives"].clone();
+        c.execute("UPDATE native_study_attempts SET rowid=1000-rowid", [])
+            .unwrap();
+        assert_eq!(progress(&c, "w").unwrap()["objectives"], before);
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("vacuum.sqlite3");
+        c.execute("VACUUM INTO ?", [path.to_string_lossy().as_ref()])
+            .unwrap();
+        let restored = Connection::open(path).unwrap();
+        assert_eq!(progress(&restored, "w").unwrap()["objectives"], before);
+    }
+    #[test]
+    fn order_backfill_preserves_legacy_timestamp_bytes_and_is_idempotent() {
+        let c = db();
+        path(&c);
+        questions(&c, "q", &["One?"]);
+        answer(&c, "q", "Q1", 1);
+        answer(&c, "q", "Q1", 0);
+        let rows = || {
+            c.prepare("SELECT payload_json FROM native_study_attempts ORDER BY rowid")
+                .unwrap()
+                .query_map([], |r| r.get::<_, String>(0))
+                .unwrap()
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .unwrap()
+        };
+        let before = rows();
+        c.execute_batch("DROP TRIGGER native_study_evidence_order_insert;DROP TABLE native_study_evidence_order;").unwrap();
+        for _ in 0..2 {
+            c.execute_batch(include_str!("schema.sql")).unwrap();
+        }
+        assert_eq!(rows(), before);
+        assert_eq!(
+            c.query_row(
+                "SELECT seq FROM sqlite_sequence WHERE name='native_study_evidence_order'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            2
+        );
+        assert_eq!(
+            progress(&c, "w").unwrap()["objectives"][0]["correct_questions"],
+            0
+        );
+        assert_eq!(
+            c.query_row(
+                "SELECT COUNT(*) FROM native_study_evidence_order",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            2
+        );
     }
 }

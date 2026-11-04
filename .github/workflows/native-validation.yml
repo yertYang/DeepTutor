@@ -14,6 +14,9 @@ on:
       - "scripts/native-calendar-flashcards-acceptance.mjs"
       - "scripts/desktop-releases.test.mjs"
       - "scripts/desktop-media-permissions.test.mjs"
+      - "scripts/desktop-dmg.test.mjs"
+      - "apps/desktop/scripts/lib/dmg.mjs"
+      - "apps/desktop/scripts/lib/macos.mjs"
       - "apps/desktop/src/media-permissions.mjs"
       - "web/lib/desktop-releases.ts"
       - ".github/workflows/native-validation.yml"
@@ -44,6 +47,8 @@ jobs:
         run: node --experimental-strip-types --test scripts/desktop-releases.test.mjs
       - name: Check desktop microphone permission boundaries
         run: node --test scripts/desktop-media-permissions.test.mjs
+      - name: Check transactional DMG publication and bounded busy-resource retries
+        run: node --test scripts/desktop-dmg.test.mjs
       - name: Check Rust warnings
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test native storage and lifecycle

@@ -180,3 +180,20 @@ CREATE TABLE IF NOT EXISTS native_reading_web_receipts(
  workspace_id TEXT NOT NULL,command_id TEXT NOT NULL,request_url TEXT NOT NULL,item_id TEXT NOT NULL,
  PRIMARY KEY(workspace_id,command_id)
 );
+-- Unlike implicit rowids, explicit INTEGER PRIMARY KEY values survive VACUUM.
+-- Freeze the legacy insertion order without rewriting any timestamp payloads.
+CREATE TABLE IF NOT EXISTS native_study_evidence_order (
+ position INTEGER PRIMARY KEY AUTOINCREMENT,
+ workspace_id TEXT NOT NULL,command_id TEXT NOT NULL,
+ UNIQUE(workspace_id,command_id),
+ FOREIGN KEY(workspace_id,command_id) REFERENCES native_study_attempts(workspace_id,command_id) ON DELETE CASCADE
+);
+INSERT OR IGNORE INTO native_study_evidence_order(workspace_id,command_id)
+ SELECT a.workspace_id,a.command_id FROM native_study_attempts a
+ WHERE NOT EXISTS (SELECT 1 FROM native_study_evidence_order o
+  WHERE o.workspace_id=a.workspace_id AND o.command_id=a.command_id)
+ ORDER BY a.rowid;
+CREATE TRIGGER IF NOT EXISTS native_study_evidence_order_insert
+ AFTER INSERT ON native_study_attempts BEGIN
+ INSERT INTO native_study_evidence_order(workspace_id,command_id) VALUES(NEW.workspace_id,NEW.command_id);
+END;
