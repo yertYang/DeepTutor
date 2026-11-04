@@ -50,6 +50,8 @@ build/
 develop-eggs/
 dist/
 downloads/
+!web/app/downloads/
+!web/app/downloads/**
 eggs/
 .eggs/
 lib64/

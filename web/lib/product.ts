@@ -5,3 +5,4 @@ export const PRODUCT_ENGLISH_NAME = PRODUCT_NAME;
 
 export const PRODUCT_REPOSITORY_URL = "https://github.com/yertYang/Lorevia";
 export const PRODUCT_RELEASES_URL = `${PRODUCT_REPOSITORY_URL}/releases`;
+export const PRODUCT_DOWNLOADS_PATH = "/downloads";

@@ -40,6 +40,8 @@ build/
 develop-eggs/
 dist/
 downloads/
+!web/app/downloads/
+!web/app/downloads/**
 eggs/
 lib64/
 parts/

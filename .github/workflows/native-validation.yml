@@ -9,6 +9,8 @@ on:
       - "VERSION"
       - "scripts/native-study-acceptance.mjs"
       - "scripts/native-reading-acceptance.mjs"
+      - "scripts/desktop-releases.test.mjs"
+      - "web/lib/desktop-releases.ts"
       - ".github/workflows/native-validation.yml"
 
 permissions:
@@ -33,6 +35,8 @@ jobs:
           node-version: "22"
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
+      - name: Check desktop download availability and asset validation
+        run: node --experimental-strip-types --test scripts/desktop-releases.test.mjs
       - name: Check Rust warnings
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test native storage and lifecycle

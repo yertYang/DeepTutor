@@ -16,7 +16,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { Toggle } from "@/components/settings/Toggle";
-import { PRODUCT_RELEASES_URL, PRODUCT_REPOSITORY_URL } from "@/lib/product";
+import { PRODUCT_DOWNLOADS_PATH, PRODUCT_REPOSITORY_URL } from "@/lib/product";
 import {
   SettingRow,
   SettingSection,
@@ -279,8 +279,8 @@ export default function AboutSettingsPage() {
       <SettingSection title={t("Download desktop app")}>
         <ResourceRow
           title={t("Download desktop app")}
-          description={t("Choose macOS Apple Silicon, macOS Intel, or Windows x64 in the release assets. If no installer is listed, use the source installation guide.")}
-          href={PRODUCT_RELEASES_URL}
+          description={t("Check available installers for macOS Apple Silicon, macOS Intel and Windows x64.")}
+          href={PRODUCT_DOWNLOADS_PATH}
           icon={<Download className="h-4 w-4" />}
         />
       </SettingSection>

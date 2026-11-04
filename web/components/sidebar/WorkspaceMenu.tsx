@@ -1,6 +1,6 @@
 'use client'
 
-import { BRAND_ASSETS, PRODUCT_RELEASES_URL } from "@/lib/product";
+import { BRAND_ASSETS, PRODUCT_DOWNLOADS_PATH } from "@/lib/product";
 
 import Image from 'next/image'
 import Link from 'next/link'
@@ -129,10 +129,10 @@ export function WorkspaceMenu({
             <Settings size={16} strokeWidth={1.6} />
             <span className="flex-1">{t('Settings')}</span>
           </Link>
-          <a role="menuitem" href={PRODUCT_RELEASES_URL} target="_blank" rel="noopener noreferrer" onClick={close} className="dt-menu-item">
+          <Link role="menuitem" href={PRODUCT_DOWNLOADS_PATH} prefetch={false} onClick={close} className="dt-menu-item">
             <Download size={16} strokeWidth={1.6} />
             <span className="flex-1">{t('Download desktop app')}</span>
-          </a>
+          </Link>
           {accountSlot ? <div className="dt-menu-slot">{accountSlot}</div> : null}
           <div className="dt-menu-divider" />
           <div className="dt-menu-footer">

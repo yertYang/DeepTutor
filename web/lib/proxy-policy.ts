@@ -52,6 +52,7 @@ const STATIC_ASSET =
 // internals, and public static assets (see STATIC_ASSET above).
 export function isAuthExempt(pathname: string): boolean {
   return (
+    pathname === "/downloads" ||
     pathname.startsWith(LOGIN_PATH) ||
     pathname.startsWith("/register") ||
     pathname === HANDOFF_PATH ||
