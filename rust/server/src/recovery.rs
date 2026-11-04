@@ -173,6 +173,14 @@ fn copy_tree(
     children.sort_by_key(|e| e.file_name());
     let mut databases = HashSet::new();
     for child in &children {
+        // Windows byte-range locks are mandatory: even probing the header of
+        // our own locked runtime file through a second handle can fail.
+        // Exclude it before any file open, not only in the later copy pass.
+        let target = destination.join(child.file_name());
+        let key = portable(target.strip_prefix(base).map_err(|_| invalid())?)?;
+        if key == "data/user/rust-server.lock" {
+            continue;
+        }
         if child.file_type()?.is_file() && is_sqlite(&child.path())? {
             databases.insert(child.file_name().to_string_lossy().into_owned());
         }
@@ -542,4 +550,56 @@ pub fn restore(package: &Path, home: &Path) -> Result<Value> {
     let result = summary(&manifest);
     publish(stage, &target)?;
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn backup_excludes_the_live_lock_and_restores_registered_sources() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().join("home");
+        let settings = Settings::open(&home).unwrap();
+        let store = crate::store::Store::open(&settings.user_root.join("chat_history.db")).unwrap();
+        let page = crate::documents::create(
+            &store.connect().unwrap(),
+            "a",
+            &json!({"title":"恢复测试","content":"不丢失的原文"}),
+        )
+        .unwrap();
+        let registration =
+            crate::workspaces::save(&settings, None, &json!({"name":"资料"})).unwrap();
+        let workspace = registration["workspace"]["path"].as_str().unwrap();
+        fs::write(Path::new(workspace).join("source.txt"), "原始文档").unwrap();
+        drop(store);
+        drop(settings);
+        let backup = temp.path().join("backup");
+        create(&home, &backup).unwrap();
+        assert_eq!(verify(&backup).unwrap()["verified"], true);
+        assert!(!backup.join("payload/data/user/rust-server.lock").exists());
+        let restored = temp.path().join("restored");
+        restore(&backup, &restored).unwrap();
+        let restored_store = crate::store::Store::open(&restored.join(DATABASE)).unwrap();
+        assert_eq!(
+            crate::documents::read(
+                &restored_store.connect().unwrap(),
+                "a",
+                crate::store::text(&page, "id")
+            )
+            .unwrap(),
+            page
+        );
+    }
+    #[test]
+    fn timestamp_serialization_preserves_the_exact_committed_value() {
+        for bits in (1_762_254_385.155_707_6_f64.to_bits()..).take(1024) {
+            let committed =
+                json!({"created_at":f64::from_bits(bits),"updated_at":f64::from_bits(bits)});
+            let stored: Value = serde_json::from_str(&committed.to_string()).unwrap();
+            assert_eq!(
+                stored, committed,
+                "Receipt timestamps changed during persistence"
+            );
+        }
+    }
 }
