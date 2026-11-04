@@ -5,12 +5,13 @@ import { Bot, Check, Copy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Modal from "@/components/common/Modal";
 import { copyText } from "@/lib/clipboard";
+import { PRODUCT_REPOSITORY_URL } from "@/lib/product";
 
 export default function AgentSetupHelp() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copying" | "copied" | "failed">("idle");
-  const prompt = t("settings.agentSetup.prompt");
+  const prompt = t("settings.agentSetup.prompt", { repositoryUrl: PRODUCT_REPOSITORY_URL });
 
   const copy = async () => {
     setCopyState("copying");
