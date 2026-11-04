@@ -6677,5 +6677,8 @@
   "A voice conversation is already active. End it before starting another.": "已有语音对话占用服务，请先结束再开始新的对话。",
   "Voice service stopped sending audio. Start a new conversation.": "语音服务已停止发送音频，请重新开始对话。",
   "Voice conversation reached its 30 minute limit.": "本次语音对话已达到 30 分钟上限。",
-  "Captions show the AI’s spoken replies. You can copy them before leaving this page.": "字幕展示 AI 的语音回复，离开页面前可复制保存。"
+  "Captions show the AI’s spoken replies. You can copy them before leaving this page.": "字幕展示 AI 的语音回复，离开页面前可复制保存。",
+  "View updates": "查看更新",
+  "This Web interface is updated with its server deployment. View release notes for update instructions.": "当前 Web 界面需要随服务部署一起更新。请查看发布说明，更新部署服务后刷新页面。",
+  "Update this desktop app by downloading an installer for your platform.": "请下载适合当前系统的新版安装包，更新桌面应用。"
 }

@@ -6679,5 +6679,8 @@
   "A voice conversation is already active. End it before starting another.": "A voice conversation is already active. End it before starting another.",
   "Voice service stopped sending audio. Start a new conversation.": "Voice service stopped sending audio. Start a new conversation.",
   "Voice conversation reached its 30 minute limit.": "Voice conversation reached its 30 minute limit.",
-  "Captions show the AI’s spoken replies. You can copy them before leaving this page.": "Captions show the AI’s spoken replies. You can copy them before leaving this page."
+  "Captions show the AI’s spoken replies. You can copy them before leaving this page.": "Captions show the AI’s spoken replies. You can copy them before leaving this page.",
+  "View updates": "View updates",
+  "This Web interface is updated with its server deployment. View release notes for update instructions.": "This Web interface is updated with its server deployment. View release notes for update instructions.",
+  "Update this desktop app by downloading an installer for your platform.": "Update this desktop app by downloading an installer for your platform."
 }

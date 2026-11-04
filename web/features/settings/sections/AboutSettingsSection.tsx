@@ -16,7 +16,8 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { Toggle } from "@/components/settings/Toggle";
-import { PRODUCT_DOWNLOADS_PATH, PRODUCT_REPOSITORY_URL } from "@/lib/product";
+import { PRODUCT_DOWNLOADS_PATH, PRODUCT_RELEASES_URL, PRODUCT_REPOSITORY_URL } from "@/lib/product";
+import { pageActionClass } from "@/components/layout/FeaturePage";
 import {
   SettingRow,
   SettingSection,
@@ -238,6 +239,26 @@ export default function AboutSettingsPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={PRODUCT_RELEASES_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              className={pageActionClass("secondary")}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              {t("View updates")}
+            </a>
+            {!canUpdate && (
+              <a
+                href={PRODUCT_DOWNLOADS_PATH}
+                target="_blank"
+                rel="noreferrer noopener"
+                className={pageActionClass()}
+              >
+                <Download className="h-3.5 w-3.5" />
+                {t("Download desktop app")}
+              </a>
+            )}
             {status?.release?.url && (
               <a
                 href={status.release.url}
@@ -274,6 +295,13 @@ export default function AboutSettingsPage() {
             )}
           </div>
         </div>
+        {unavailable && (
+          <p role="status" className="relative mt-4 text-[13px] leading-relaxed text-[var(--muted-foreground)]">
+            {edition.short === "Web"
+              ? t("This Web interface is updated with its server deployment. View release notes for update instructions.")
+              : t("Update this desktop app by downloading an installer for your platform.")}
+          </p>
+        )}
       </section>
 
       <SettingSection title={t("Download desktop app")}>
@@ -290,12 +318,6 @@ export default function AboutSettingsPage() {
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
-      )}
-
-      {unavailable && (
-        <p role="status" className="mb-7 text-[13px] text-[var(--muted-foreground)]">
-          {t("Automatic updates are not available in this installation. Download releases manually.")}
-        </p>
       )}
 
       <SettingSection title={t("Software")}>
