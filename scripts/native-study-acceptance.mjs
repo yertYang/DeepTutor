@@ -893,7 +893,13 @@ try {
   const registration = (
     await request("/api/settings/workspace/registrations")
   ).workspaces.find((w) => w.workspace_id === scope);
-  assert.ok(registration.path.startsWith(await realpath(restored)));
+  // Rust canonicalization retains the Windows \\?\ prefix; Node realpath
+  // may omit it. Compare actual filesystem paths and path components.
+  const restoredWorkspace = await realpath(registration.path);
+  const relativeWorkspace = path.relative(await realpath(restored), restoredWorkspace);
+  assert.ok(relativeWorkspace && !path.isAbsolute(relativeWorkspace));
+  assert.ok(relativeWorkspace !== '..' && !relativeWorkspace.startsWith('..' + path.sep));
+  assert.notEqual(restoredWorkspace, await realpath(workspace.path));
   const result = {
     passed: true,
     provider: "local synthetic Chat Completions SSE",

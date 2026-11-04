@@ -684,12 +684,15 @@ mod tests {
         let value: Value = response.json().await.unwrap();
         assert_eq!(value["has_api_key"], true);
         assert!(!value.to_string().contains("synthetic-secret"));
-        let path = Config::path(&app.settings, "a").unwrap();
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             assert_eq!(
-                std::fs::metadata(path).unwrap().permissions().mode() & 0o777,
+                std::fs::metadata(Config::path(&app.settings, "a").unwrap())
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
                 0o600
             );
         }
