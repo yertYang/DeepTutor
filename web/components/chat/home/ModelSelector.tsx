@@ -51,7 +51,7 @@ function ModelOptionRow({
   return (
     <button
       type="button"
-      aria-label={`${option.model_name} | ${option.profile_name}`}
+      aria-label={`${option.model_name} | ${option.profile_name}${option.source ? ` | ${t(option.source === "admin" ? "Assigned" : "Personal")}` : ""}`}
       onClick={onSelect}
       onMouseEnter={() => {
         const el = nameRef.current;
@@ -78,6 +78,11 @@ function ModelOptionRow({
       {option.is_active_default && (
         <span className="shrink-0 rounded-full bg-[var(--muted)] px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
           {t("Default")}
+        </span>
+      )}
+      {option.source && (
+        <span className="shrink-0 rounded-full bg-[var(--muted)] px-1.5 py-px text-[9px] text-[var(--muted-foreground)]">
+          {t(option.source === "admin" ? "Assigned" : "Personal")}
         </span>
       )}
       <span className="min-w-0 flex-1 truncate text-[11px] text-[var(--muted-foreground)]">
@@ -184,7 +189,7 @@ export default function ModelSelector({
   return (
     <div ref={rootRef} className="relative" data-composer-model-selector={pinned || undefined}>
       {/* The model name shares the composer selectors' spring and hover delay. */}
-      <Tooltip label={canRefresh ? t("Refresh models") : label} suppressed={open} side="top">
+      <Tooltip label={canRefresh ? t("Refresh models") : `${label}${selectedOption?.source ? ` · ${t(selectedOption.source === "admin" ? "Assigned" : "Personal")}` : ""}`} suppressed={open} side="top">
         <button
           type="button"
           disabled={disabled}

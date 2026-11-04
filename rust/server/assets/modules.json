@@ -63,7 +63,19 @@
       "enabled": true,
       "ready": true,
       "navigation": [],
-      "issues": []
+      "issues": [],
+      "features": {
+        "native_runtime": true,
+        "speech_to_text": true,
+        "speech_synthesis": true,
+        "voice_math_speak": true,
+        "voice_discovery": true,
+        "model_diagnostics": true,
+        "service_preview_stt": true,
+        "service_preview_search": true,
+        "service_preview_imagegen": true,
+        "service_preview_videogen": true
+      }
     },
     {
       "id": "knowledge",

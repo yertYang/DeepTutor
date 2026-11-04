@@ -65,7 +65,16 @@ pub fn definitions_scoped(
             capability == Capability::DeepResearch,
         ));
     }
-    tools.extend(crate::learning::definitions(flags));
+    tools.extend(
+        crate::learning::definitions(flags)
+            .into_iter()
+            .filter(|tool| {
+                flags
+                    .allowed_tools
+                    .as_ref()
+                    .is_none_or(|names| names.iter().any(|name| tool["name"] == name.as_str()))
+            }),
+    );
     tools
 }
 
@@ -81,6 +90,31 @@ impl ToolRegistry {
         solve: &mut crate::solve::SolveState,
         flags: &crate::learning::ToolFlags,
     ) -> ToolOutcome {
+        if let (Some(root), Some(id)) = (&self.settings.shared, &self.settings.account_id) {
+            let allowed = (|| -> Result<bool> {
+                let grant = crate::accounts::grant(root, id)?;
+                if call.name == "browser_test" {
+                    return Ok(false);
+                }
+                let optional = [
+                    "list_favorites",
+                    "save_favorite",
+                    "read_memory",
+                    "write_memory",
+                    "rag",
+                    "web_search",
+                ];
+                if optional.contains(&call.name.as_str())
+                    && let Some(names) = grant["enabled_tools"].as_array()
+                {
+                    return Ok(names.iter().any(|v| v == call.name.as_str()));
+                }
+                Ok(true)
+            })();
+            if !matches!(allowed, Ok(true)) {
+                return json!({"success":false,"error":"forbidden","content":"This tool is not assigned to your account."}).into();
+            }
+        }
         if self.admission.capability.is_study()
             && matches!(
                 call.name.as_str(),

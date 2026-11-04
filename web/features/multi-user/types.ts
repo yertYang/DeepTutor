@@ -43,6 +43,7 @@ export type McpToolOption = {
 };
 
 export type MultiUserResources = {
+  native?: boolean;
   models: {
     llm: Array<{
       profile_id: string;

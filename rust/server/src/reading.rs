@@ -117,6 +117,34 @@ pub fn add(c: &Connection, s: &str, input: &Value) -> Result<Value> {
         },
     )
 }
+pub(crate) fn copy_material(target: &Connection, source: &Connection, item: &str) -> Result<Value> {
+    let metadata = read(source, "", item)?;
+    let content = self::source(source, "", item)?;
+    let (_, original) = self::original(source, "", item)?;
+    let kind = match text(&metadata, "kind") {
+        "" => "local",
+        value => value,
+    };
+    let mime = match text(&metadata, "mime") {
+        "" => "application/octet-stream",
+        value => value,
+    };
+    save_snapshot(
+        target,
+        "",
+        &SourceSnapshot {
+            kb: format!("assigned-{}", text(&metadata, "kb")),
+            path: text(&metadata, "path").to_owned(),
+            hash: text(&metadata, "original_hash").to_owned(),
+            title: text(&metadata, "title").to_owned(),
+            kind: kind.to_owned(),
+            source_url: metadata["source_url"].as_str().map(str::to_owned),
+            mime: mime.to_owned(),
+            content,
+            original,
+        },
+    )
+}
 struct SourceSnapshot {
     kb: String,
     path: String,

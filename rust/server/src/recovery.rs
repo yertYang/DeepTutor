@@ -295,6 +295,18 @@ pub fn create(home: &Path, output: &Path) -> Result<Value> {
         &mut manifest,
         0,
     )?;
+    for directory in ["data/system", "data/users"] {
+        let source = home.join(directory);
+        if source.try_exists()? {
+            copy_tree(
+                &source,
+                &payload.join(directory),
+                &payload,
+                &mut manifest,
+                0,
+            )?;
+        }
+    }
     manifest.schema_version = check_database(&payload.join(DATABASE))?;
     let catalog = payload.join(CATALOG);
     if catalog.try_exists()? {
@@ -392,7 +404,7 @@ fn summary(manifest: &Manifest) -> Value {
     json!({"format_version":manifest.format_version,"schema_version":manifest.schema_version,
         "files":manifest.files.len(),"workspaces":manifest.workspaces.len(),
         "bytes":manifest.files.iter().map(|e|e.bytes as u128).sum::<u128>().to_string(),
-        "scope":"data/user and registered workspace directories",
+        "scope":"data/user, data/users, data/system and registered workspace directories",
         "excluded":["data/user/backups","runtime lock and SQLite sidecars"],
         "contains_credentials":true})
 }
@@ -421,7 +433,11 @@ fn load(package: &Path) -> Result<Manifest> {
     let mut names = HashSet::new();
     for path in &manifest.directories {
         let path = relative(path)?;
-        if !(path.starts_with("data/user") || path.starts_with("workspaces")) {
+        if !(path.starts_with("data/user")
+            || path.starts_with("data/users")
+            || path.starts_with("data/system")
+            || path.starts_with("workspaces"))
+        {
             return Err(invalid());
         }
         if !names.insert(path.clone()) {
@@ -500,7 +516,11 @@ pub fn restore(package: &Path, home: &Path) -> Result<Value> {
     }
     for entry in &manifest.files {
         let path = relative(&entry.path)?;
-        if !(path.starts_with("data/user") || path.starts_with("workspaces")) {
+        if !(path.starts_with("data/user")
+            || path.starts_with("data/users")
+            || path.starts_with("data/system")
+            || path.starts_with("workspaces"))
+        {
             return Err(invalid());
         }
         let source = package.join("payload").join(&path);
@@ -546,6 +566,40 @@ pub fn restore(package: &Path, home: &Path) -> Result<Value> {
         conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;")?;
     } else if !manifest.workspaces.is_empty() {
         return Err(invalid());
+    }
+    // Account catalogs also contain absolute paths. Restore them within their
+    // own account root, never retain pointers into the source deployment.
+    for entry in &manifest.files {
+        let path = relative(&entry.path)?;
+        if path.starts_with("data/users") && path.ends_with("user/runtime/workspaces.sqlite3") {
+            let root = path.parent().and_then(Path::parent).ok_or_else(invalid)?;
+            let conn = Connection::open(stage.path().join(&path))?;
+            let rows = conn
+                .prepare("SELECT id,payload FROM workspaces")?
+                .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            for (id, raw) in rows {
+                let mut value: Value = serde_json::from_str(&raw).map_err(|_| invalid())?;
+                let suffix = if id.is_empty() {
+                    PathBuf::from("workspace")
+                } else {
+                    crate::accounts::validate_id(&id)?;
+                    PathBuf::from("workspaces").join(&id)
+                };
+                value["path"] = json!(target.join(root).join(suffix));
+                conn.execute(
+                    "UPDATE workspaces SET payload=? WHERE id=?",
+                    params![value.to_string(), id],
+                )?;
+            }
+            conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;")?;
+        }
+    }
+    let identities = stage.path().join("data/system/auth/native.sqlite3");
+    if identities.try_exists()? {
+        let conn = Connection::open(identities)?;
+        conn.execute("DELETE FROM auth_sessions", [])?;
+        conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;")?;
     }
     let result = summary(&manifest);
     publish(stage, &target)?;

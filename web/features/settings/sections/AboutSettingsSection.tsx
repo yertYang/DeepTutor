@@ -1,7 +1,6 @@
 "use client";
 
 import { useSettings } from "@/features/settings/store/SettingsStore";
-import { useStagedSettings } from "@/features/settings/store/useStagedSettings";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowUpRight,
@@ -31,6 +30,7 @@ import {
   fetchAppUpdateJob,
   fetchAppUpdateStatus,
   requestAppUpdate,
+  setAppUpdateChecks,
   updateJobIsActive,
   type AppUpdateStatus,
   type InstallMode,
@@ -43,8 +43,8 @@ import {
   type ClientEdition,
 } from "@/lib/version";
 
-const POLL_INTERVAL_MS = 800;
-const POLL_TIMEOUT_MS = 120_000;
+const POLL_INTERVAL_MS = 2_000;
+const POLL_TIMEOUT_MS = 35 * 60_000;
 
 const INSTALLATION_LABELS: Record<InstallMode, string> = {
   pypi: "PyPI package",
@@ -65,9 +65,9 @@ export default function AboutSettingsPage() {
   const [job, setJob] = useState<UpdateJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
-  const { applying: savingChecks, draftRevision } = useSettings();
-  const [liveChecks, setLiveChecks] = useState({ enabled: false });
-  const [checks, setChecks] = useStagedSettings("update-checks", liveChecks, setLiveChecks);
+  const { draftRevision } = useSettings();
+  const [savingChecks, setSavingChecks] = useState(false);
+  const [checks, setChecks] = useState({ enabled: false });
   const [requesting, setRequesting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState("");
@@ -78,7 +78,7 @@ export default function AboutSettingsPage() {
       const next = await fetchAppUpdateStatus();
       setStatus(next);
       setUnavailable(false);
-      setLiveChecks({ enabled: next.check_enabled });
+      setChecks({ enabled: next.check_enabled });
       setJob(next.job);
       setError(next.check_error || "");
     } catch (cause) {
@@ -147,7 +147,7 @@ export default function AboutSettingsPage() {
     try {
       const next = await checkAppUpdate();
       setStatus(next);
-      setLiveChecks({ enabled: next.check_enabled });
+      setChecks({ enabled: next.check_enabled });
       setJob(next.job);
     } catch (cause) {
       setError(
@@ -160,13 +160,25 @@ export default function AboutSettingsPage() {
     }
   }, [t]);
 
-  const changeChecks = (enabled: boolean) => setChecks({ enabled });
+  const changeChecks = async (enabled: boolean) => {
+    setSavingChecks(true);
+    setError("");
+    try {
+      const next = await setAppUpdateChecks(enabled);
+      setStatus(next);
+      setChecks({ enabled: next.check_enabled });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("Unable to check for updates."));
+    } finally {
+      setSavingChecks(false);
+    }
+  };
 
   const update = useCallback(async () => {
     setRequesting(true);
     setError("");
     try {
-      const next = await requestAppUpdate();
+      const next = await requestAppUpdate(status?.release?.revision);
       setJob(next);
       setConfirmOpen(false);
     } catch (cause) {
@@ -178,13 +190,15 @@ export default function AboutSettingsPage() {
     } finally {
       setRequesting(false);
     }
-  }, [t]);
+  }, [t, status?.release?.revision]);
 
   const currentVersion =
     normalizeVersionTag(status?.current_version) ??
     normalizeVersionTag(process.env.NEXT_PUBLIC_APP_VERSION) ??
     "—";
   const latestVersion = normalizeVersionTag(status?.release?.version);
+  const serverUpdates = status?.installation.mode === "docker";
+  const updateTarget = status?.release?.revision?.slice(0, 12) ?? latestVersion ?? "";
   // The user agent only exists in the browser; start from the server's view.
   const [edition, setEdition] = useState<ClientEdition>(() =>
     clientEdition(""),
@@ -290,7 +304,7 @@ export default function AboutSettingsPage() {
                 icon={<Download className="h-3.5 w-3.5" />}
                 onClick={() => setConfirmOpen(true)}
               >
-                {t("Update to {{version}}", { version: latestVersion ?? "" })}
+                {t("Update to {{version}}", { version: updateTarget })}
               </Button>
             )}
           </div>
@@ -325,6 +339,10 @@ export default function AboutSettingsPage() {
           title={t("Current version")}
           control={<CodeValue value={currentVersion} />}
         />
+        {status?.current_revision && <SettingRow
+          title={t("Server code revision")}
+          control={<CodeValue value={status.current_revision.slice(0, 12)} />}
+        />}
         {status && <SettingRow
           title={t("Installation")}
           description={t(
@@ -338,12 +356,12 @@ export default function AboutSettingsPage() {
         />}
         {status && <SettingRow
           title={t("Release channel")}
-          description={t(
-            "Only stable, published DeepTutor releases are considered.",
-          )}
+          description={t(serverUpdates
+            ? "Checks the server's configured Git tracking branch."
+            : "Only stable, published DeepTutor releases are considered.")}
           control={
             <span className="text-[12.5px] text-[var(--foreground)]">
-              {t("Stable")}
+              {t(serverUpdates ? "Server Git branch" : "Stable")}
             </span>
           }
         />}
@@ -351,9 +369,9 @@ export default function AboutSettingsPage() {
 
       {status && <SettingSection
         title={t("Updates")}
-        description={t(
-          "Version checks are cached for 24 hours. DeepTutor never installs an update without confirmation.",
-        )}
+        description={t(serverUpdates
+          ? "Check for server code changes, then confirm to rebuild and restart. Building may take several minutes."
+          : "Version checks are cached for 24 hours. DeepTutor never installs an update without confirmation.")}
       >
         <SettingRow
           title={t("Check for updates")}
@@ -375,7 +393,7 @@ export default function AboutSettingsPage() {
           }
         />
         <SettingRow
-          title={t("Latest stable release")}
+          title={t(serverUpdates ? "Latest server code" : "Latest stable release")}
           description={
             checkedAt
               ? t("Last checked {{time}}", { time: checkedAt })
@@ -386,7 +404,7 @@ export default function AboutSettingsPage() {
           control={
             <div className="flex items-center gap-2">
               {upToDate && <Check className="h-3.5 w-3.5 text-emerald-500" />}
-              <CodeValue value={latestVersion ?? "—"} />
+              <CodeValue value={status?.release?.revision?.slice(0, 12) ?? latestVersion ?? "—"} />
             </div>
           }
         />
@@ -476,10 +494,10 @@ export default function AboutSettingsPage() {
         onConfirm={() => void update()}
         onCancel={() => setConfirmOpen(false)}
       >
-        {t(
-          "DeepTutor will briefly stop, install {{version}}, and reopen with the same settings. Active conversations must finish first.",
-          { version: latestVersion ?? "" },
-        )}
+        {t(serverUpdates
+          ? "The server will pull code, build an image and restart the application. Finish active conversations first. Settings and data are preserved. Target: {{version}}."
+          : "DeepTutor will briefly stop, install {{version}}, and reopen with the same settings. Active conversations must finish first.",
+          { version: updateTarget })}
       </ConfirmDialog>
     </div>
   );

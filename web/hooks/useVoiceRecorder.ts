@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-import { apiFetch, apiUrl } from "@/lib/api";
+import { apiUrl, requestJson } from "@/lib/api";
 import { stripAudioMimeParameters } from "@/lib/voice-mime";
+import { activeWorkspaceId } from "@/lib/workspace-scope";
 
-export type RecorderState = "idle" | "recording" | "transcribing";
+export type RecorderState = "idle" | "checking" | "recording" | "transcribing";
 
 /**
  * Microphone capture → backend transcription. Records via MediaRecorder, posts
@@ -13,11 +15,12 @@ export type RecorderState = "idle" | "recording" | "transcribing";
  * provider), and hands the transcript back through ``onTranscript``.
  */
 export function useVoiceRecorder(onTranscript: (text: string) => void) {
+  const { t } = useTranslation();
   const [state, setState] = useState<RecorderState>("idle");
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
 
@@ -27,40 +30,119 @@ export function useVoiceRecorder(onTranscript: (text: string) => void) {
   }, []);
 
   const start = useCallback(async () => {
-    if (state !== "idle") return;
+    if (state !== "idle" || requestRef.current) return;
     setError(null);
     if (
       typeof navigator === "undefined" ||
       !navigator.mediaDevices?.getUserMedia ||
       typeof MediaRecorder === "undefined"
     ) {
-      setError("Recording is not supported in this browser.");
+      setError(t("Recording is not supported in this browser."));
+      return;
+    }
+    const controller = new AbortController();
+    requestRef.current = controller;
+    const workspace = activeWorkspaceId();
+    const url = apiUrl("/api/voice/stt");
+    setState("checking");
+    try {
+      const { catalog } = await requestJson<{
+        catalog: {
+          services: {
+            stt?: {
+              active_profile_id?: string;
+              active_model_id?: string;
+              profiles: {
+                id: string;
+                models: { id: string; model: string }[];
+              }[];
+            };
+          };
+        };
+      }>(apiUrl("/api/settings/catalog"), {
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(15000),
+        ]),
+      });
+      const stt = catalog.services.stt;
+      const profile = stt?.profiles.find((p) => p.id === stt.active_profile_id);
+      if (
+        !profile?.models.some(
+          (m) => m.id === stt?.active_model_id && m.model.trim(),
+        )
+      ) {
+        throw new Error(
+          "Choose a speech-to-text model in Settings → Voice and set it as default before recording.",
+        );
+      }
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        setError(
+          t(err instanceof Error ? err.message : "Transcription failed"),
+        );
+        setState("idle");
+      }
+      if (requestRef.current === controller) requestRef.current = null;
       return;
     }
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setError("Microphone permission denied.");
+      if (!controller.signal.aborted) {
+        setError(t("Microphone permission denied."));
+        setState("idle");
+      }
+      if (requestRef.current === controller) requestRef.current = null;
+      return;
+    }
+    if (controller.signal.aborted || activeWorkspaceId() !== workspace) {
+      stream.getTracks().forEach((track) => track.stop());
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        setState("idle");
+      }
       return;
     }
     streamRef.current = stream;
-    const recorder = new MediaRecorder(stream);
-    chunksRef.current = [];
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream);
+    } catch {
+      releaseStream();
+      requestRef.current = null;
+      setState("idle");
+      setError(t("Recording is not supported in this browser."));
+      return;
+    }
+    const chunks: Blob[] = [];
     recorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) chunksRef.current.push(event.data);
+      if (event.data && event.data.size > 0) chunks.push(event.data);
     };
     recorder.onstop = async () => {
       const mimeType = stripAudioMimeParameters(recorder.mimeType);
-      releaseStream();
-      const blob = new Blob(chunksRef.current, { type: mimeType });
-      chunksRef.current = [];
+      stream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current === stream) streamRef.current = null;
+      if (recorderRef.current === recorder) recorderRef.current = null;
+      if (controller.signal.aborted || activeWorkspaceId() !== workspace) {
+        if (requestRef.current === controller) {
+          requestRef.current = null;
+          setState("idle");
+        }
+        return;
+      }
+      const blob = new Blob(chunks, { type: mimeType });
       if (!blob.size) {
+        requestRef.current = null;
         setState("idle");
         return;
       }
       setState("transcribing");
       try {
+        if (blob.size > 25 * 1024 * 1024) {
+          throw new Error("Recordings must be at most 25 MiB.");
+        }
         const ext = mimeType.includes("ogg")
           ? "ogg"
           : mimeType.includes("mp4")
@@ -68,31 +150,60 @@ export function useVoiceRecorder(onTranscript: (text: string) => void) {
             : "webm";
         const form = new FormData();
         form.append("file", blob, `recording.${ext}`);
-        const resp = await apiFetch(apiUrl("/api/voice/stt"), {
+        const data = await requestJson<{ text: string }>(url, {
           method: "POST",
           body: form,
+          signal: AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(130000),
+          ]),
         });
-        if (!resp.ok) {
-          const detail = (await resp.json().catch(() => null)) as {
-            detail?: string;
-          } | null;
+        if (typeof data.text !== "string")
           throw new Error(
-            detail?.detail || `Transcription failed (HTTP ${resp.status}).`,
+            "Speech recognition provider returned no text field.",
           );
-        }
-        const data = (await resp.json()) as { text?: string };
-        const text = (data.text || "").trim();
-        if (text) onTranscriptRef.current(text);
+        const text = data.text.trim();
+        if (!text)
+          throw new Error(
+            "No speech was detected. Please try recording again.",
+          );
+        if (!controller.signal.aborted && activeWorkspaceId() === workspace)
+          onTranscriptRef.current(text);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Transcription failed.");
+        if (!controller.signal.aborted)
+          setError(
+            t(err instanceof Error ? err.message : "Transcription failed"),
+          );
       } finally {
-        setState("idle");
+        if (requestRef.current === controller) {
+          requestRef.current = null;
+          setState("idle");
+        }
       }
     };
-    recorder.start();
+    recorder.onerror = () => {
+      controller.abort();
+      if (recorder.state !== "inactive") recorder.stop();
+      stream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current === stream) streamRef.current = null;
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        setState("idle");
+        setError(t("Recording failed. Check your microphone and try again."));
+      }
+    };
+    try {
+      recorder.start();
+    } catch {
+      releaseStream();
+      requestRef.current = null;
+      setState("idle");
+      setError(t("Recording is not supported in this browser."));
+      return;
+    }
     recorderRef.current = recorder;
     setState("recording");
-  }, [releaseStream, state]);
+  }, [releaseStream, state, t]);
 
   const stop = useCallback(() => {
     const recorder = recorderRef.current;
@@ -108,12 +219,30 @@ export function useVoiceRecorder(onTranscript: (text: string) => void) {
 
   // Stop the mic if the component unmounts mid-recording.
   useEffect(() => {
-    return () => {
+    const cancel = () => {
+      requestRef.current?.abort();
+      requestRef.current = null;
       const recorder = recorderRef.current;
       if (recorder && recorder.state !== "inactive") recorder.stop();
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      releaseStream();
     };
-  }, []);
+    const switchWorkspace = () => {
+      cancel();
+      setState("idle");
+      setError(null);
+    };
+    window.addEventListener(
+      "deeptutor:before-workspace-switch",
+      switchWorkspace,
+    );
+    return () => {
+      window.removeEventListener(
+        "deeptutor:before-workspace-switch",
+        switchWorkspace,
+      );
+      cancel();
+    };
+  }, [releaseStream]);
 
   return { state, error, toggle, start, stop };
 }

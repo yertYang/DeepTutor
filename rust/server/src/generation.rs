@@ -16,6 +16,15 @@ pub async fn text(
 ) -> Result<(String, Value)> {
     let settings = app.settings.clone();
     let model = blocking(move || settings.model(&Value::Null)).await?;
+    text_with_model(app.settings.clone(), model, instructions, input).await
+}
+
+pub(crate) async fn text_with_model(
+    settings: Arc<crate::config::Settings>,
+    model: crate::config::Model,
+    instructions: &str,
+    input: String,
+) -> Result<(String, Value)> {
     let mut body = provider::request_body_scoped(
         &model,
         vec![json!({"role":"user","content":input})],
@@ -31,7 +40,7 @@ pub async fn text(
     }
     crate::turn_engine::validate_body(&model, &body)?;
     let (tx, mut rx) = mpsc::channel(32);
-    let future = provider::round(app.settings.clone(), &model, body, tx, false, None);
+    let future = provider::round(settings, &model, body, tx, false, None);
     tokio::pin!(future);
     let deadline = tokio::time::sleep(Duration::from_secs(90));
     tokio::pin!(deadline);

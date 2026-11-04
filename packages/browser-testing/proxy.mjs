@@ -7,12 +7,15 @@ import {allowedUrl} from './scenario.mjs';
 
 export async function testProxy(config) {
   const sockets = new Set();
+  const blockedOrigins = new Set();
   const track = socket => { sockets.add(socket); socket.once('close', () => sockets.delete(socket)); return socket; };
   function allowed(value, scheme) {
     const url = new URL(value);
     if (scheme) url.protocol = scheme;
-    allowedUrl(url.href, config.base_url, config.allowed_origins);
-    if ((config.blocked_ports ?? []).includes(Number(url.port || (url.protocol === 'https:' ? 443 : 80)))) throw new Error('The application control service cannot be tested with this browser.');
+    try {
+      allowedUrl(url.href, config.base_url, config.allowed_origins);
+      if ((config.blocked_ports ?? []).includes(Number(url.port || (url.protocol === 'https:' ? 443 : 80)))) throw new Error('The application control service cannot be tested with this browser.');
+    } catch (error) { if (blockedOrigins.size < 32) blockedOrigins.add(url.origin); throw error; }
     return url;
   }
   const server = http.createServer((req, res) => {
@@ -59,6 +62,7 @@ export async function testProxy(config) {
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   return {
     url: `http://127.0.0.1:${server.address().port}`,
+    blockedOrigins,
     async close() { for (const socket of sockets) socket.destroy(); await new Promise(resolve => server.close(resolve)); },
   };
 }

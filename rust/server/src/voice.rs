@@ -264,6 +264,7 @@ impl Runtime {
 
 pub(crate) fn router() -> Router<Arc<Application>> {
     Router::new()
+        .merge(crate::speech::router())
         .route("/api/voice", get(state))
         .route("/api/voice/config", put(save))
         .route("/api/voice/sessions", post(start))
@@ -436,6 +437,7 @@ async fn socket(
     State(app): State<Arc<Application>>,
     Path(id): Path<String>,
     Query(query): Query<SocketQuery>,
+    principal: Option<axum::Extension<crate::accounts_api::Principal>>,
     ws: WebSocketUpgrade,
 ) -> Result<Response> {
     let scope = query.scope.id()?;
@@ -447,7 +449,7 @@ async fn socket(
     Ok(ws
         .max_message_size(MAX_PACKET)
         .max_frame_size(MAX_PACKET)
-        .on_upgrade(move |socket| bridge(socket, lease, shutdown)))
+        .on_upgrade(move |socket| bridge(socket, lease, shutdown, app, principal.map(|p| p.0))))
 }
 fn valid_upstream(data: &[u8], ready: bool) -> bool {
     match data.first() {
@@ -467,7 +469,13 @@ async fn failure(socket: &mut WebSocket, message: &str) {
     .await;
     let _ = tokio::time::timeout(Duration::from_secs(2), socket.close()).await;
 }
-async fn bridge(mut socket: WebSocket, mut lease: Lease, mut shutdown: watch::Receiver<bool>) {
+async fn bridge(
+    mut socket: WebSocket,
+    mut lease: Lease,
+    mut shutdown: watch::Receiver<bool>,
+    app: Arc<Application>,
+    principal: Option<crate::accounts_api::Principal>,
+) {
     if *lease.cancel.borrow() || *shutdown.borrow() {
         return;
     }
@@ -503,8 +511,12 @@ async fn bridge(mut socket: WebSocket, mut lease: Lease, mut shutdown: watch::Re
     let mut rate_at = Instant::now();
     let mut rate_bytes = 0usize;
     let mut text_bytes = 0usize;
+    let mut auth_check = tokio::time::interval(Duration::from_secs(1));
     let error = loop {
         tokio::select! {
+            _=auth_check.tick()=>{
+                if !crate::accounts_api::session_valid(&app,&principal).await {break Some("Your session has ended. Sign in again.");}
+            },
             _=lease.cancel.changed()=>break None, _=shutdown.changed()=>break None,
             _=&mut limit=>break Some("Voice conversation reached its 30 minute limit."),
             _=&mut deadline=>break Some(if ready {"Voice service stopped sending audio. Start a new conversation."} else {"PersonaPlex did not become ready in time. It may be busy loading the model."}),

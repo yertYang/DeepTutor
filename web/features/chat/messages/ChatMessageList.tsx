@@ -64,6 +64,7 @@ import {
   supportsGeneratedOutputActions,
 } from "@/components/chat/GeneratedOutputFileActions";
 import { useVoiceAutoplay } from "@/hooks/useVoiceAutoplay";
+import { useRuntimeFeature } from "@/hooks/useRuntimeFeature";
 import {
   SPEECH_PLAYBACK_FAILURE_MESSAGE,
   SPEECH_TIMEOUT_MESSAGE,
@@ -197,7 +198,7 @@ const MODE_BADGE_LABELS: Record<string, string> = {
   chat: "Chat",
   ask_questions: "Ask Questions",
   deep_solve: "Deep Solve",
-  test_cases: "Write Test Cases",
+  test_cases: "Test",
   deep_question: "Quiz Generation",
   deep_research: "Deep Research",
   math_animator: "Math Animator",
@@ -1467,6 +1468,15 @@ export function PlayAudioButton({
   conversationKey,
   autoPlayFresh,
 }: {
+  content: string;
+  conversationKey?: string;
+  autoPlayFresh: boolean;
+}) {
+  const available = useRuntimeFeature("speech_synthesis");
+  return available ? <AvailablePlayAudioButton content={content} conversationKey={conversationKey} autoPlayFresh={autoPlayFresh} /> : null;
+}
+
+function AvailablePlayAudioButton({ content, conversationKey, autoPlayFresh }: {
   content: string;
   conversationKey?: string;
   autoPlayFresh: boolean;

@@ -7,7 +7,7 @@ use crate::{
 };
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{DefaultBodyLimit, Multipart, Path, Query, State},
     http::HeaderMap,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -20,6 +20,18 @@ use tokio::sync::watch;
 type App = Arc<Application>;
 pub fn router() -> Router<App> {
     Router::new()
+        .route(
+            "/api/browser-testing/sources",
+            get(source_list)
+                .post(import_sources)
+                .layer(DefaultBodyLimit::max(65 * 1024 * 1024)),
+        )
+        .route("/api/browser-testing/sources/{id}", get(source_read))
+        .route(
+            "/api/browser-testing/sources/{id}/original",
+            get(source_original),
+        )
+        .route("/api/browser-testing/exports/{id}", get(workbook_download))
         .route("/api/browser-testing", get(state))
         .route("/api/browser-testing/config", axum::routing::put(config))
         .route("/api/browser-testing/cases", post(create))
@@ -34,7 +46,145 @@ pub fn router() -> Router<App> {
         .route("/api/browser-testing/artifacts/{id}", get(artifact))
 }
 async fn state(State(app): State<App>, Query(scope): Query<Scope>) -> Result<Json<Value>> {
-    crate::data_api::run(app,scope,false,|_,_|Ok(()),|c,s|Ok(json!({"config":data::config(c,s)?,"cases":data::cases(c,s)?,"runs":data::reports(c,s)?,"engine_available":data::worker_path().is_file()}))).await
+    crate::data_api::run(app,scope,false,|_,_|Ok(()),|c,s|Ok(json!({"config":data::config(c,s)?,"cases":data::cases(c,s)?,"runs":data::reports(c,s)?,"sources":data::sources::list(c,s)?,"exports":data::sources::exports(c,s)?,"engine_available":data::worker_path().is_file()}))).await
+}
+async fn source_list(State(app): State<App>, Query(scope): Query<Scope>) -> Result<Json<Value>> {
+    crate::data_api::run(
+        app,
+        scope,
+        false,
+        |_, _| Ok(()),
+        |c, s| Ok(json!({"sources":data::sources::list(c,s)?})),
+    )
+    .await
+}
+async fn source_read(
+    State(app): State<App>,
+    Query(scope): Query<Scope>,
+    Path(id): Path<String>,
+) -> Result<Json<Value>> {
+    crate::data_api::run(
+        app,
+        scope,
+        false,
+        |_, _| Ok(()),
+        move |c, s| data::sources::read(c, s, &id, 0, 200),
+    )
+    .await
+}
+async fn import_sources(
+    State(app): State<App>,
+    Query(scope): Query<Scope>,
+    mut multipart: Multipart,
+) -> Result<Json<Value>> {
+    let mut documents = Vec::new();
+    let mut total = 0;
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| Error::invalid("Invalid test input upload."))?
+    {
+        let name = field
+            .file_name()
+            .ok_or_else(|| Error::invalid("Select files to import."))?
+            .rsplit(['/', '\\'])
+            .next()
+            .unwrap_or("")
+            .to_owned();
+        if documents.len() >= 32 {
+            return Err(Error::invalid("Import at most 32 files per batch."));
+        }
+        let bytes = field
+            .bytes()
+            .await
+            .map_err(|_| Error::invalid("Invalid test input upload."))?
+            .to_vec();
+        total += bytes.len();
+        if bytes.len() > crate::document_parser::MAX_UPLOAD || total > 64 * 1024 * 1024 {
+            return Err(Error::invalid(
+                "Use files up to 16 MiB and batches up to 64 MiB.",
+            ));
+        }
+        documents.push((name, bytes));
+    }
+    if documents.is_empty() {
+        return Err(Error::invalid(
+            "Select at least one requirement or Excel file.",
+        ));
+    }
+    let documents = blocking(move || {
+        documents
+            .into_iter()
+            .map(|(name, bytes)| {
+                let content = crate::document_parser::parse(&name, &bytes)?;
+                Ok(data::sources::Document {
+                    name,
+                    bytes,
+                    content,
+                })
+            })
+            .collect::<Result<Vec<_>>>()
+    })
+    .await?;
+    crate::data_api::run(
+        app,
+        scope,
+        true,
+        |_, _| Ok(()),
+        move |c, s| data::sources::import(c, s, documents),
+    )
+    .await
+}
+fn source_download(name: String, bytes: Vec<u8>, xlsx: bool) -> Response {
+    let encoded = name
+        .bytes()
+        .map(|b| {
+            if b.is_ascii_alphanumeric() || b"-._".contains(&b) {
+                (b as char).to_string()
+            } else {
+                format!("%{b:02X}")
+            }
+        })
+        .collect::<String>();
+    (
+        [
+            (
+                "content-type",
+                if xlsx {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".into()
+                } else {
+                    "application/octet-stream".into()
+                },
+            ),
+            (
+                "content-disposition",
+                format!("attachment; filename*=UTF-8''{encoded}"),
+            ),
+            ("x-content-type-options", "nosniff".into()),
+        ],
+        bytes,
+    )
+        .into_response()
+}
+async fn source_original(
+    State(app): State<App>,
+    Query(scope): Query<Scope>,
+    Path(id): Path<String>,
+) -> Result<Response> {
+    let s = scope.id()?;
+    let (name, bytes) =
+        blocking(move || data::sources::original(&app.store.connect()?, &s, &id)).await?;
+    Ok(source_download(name, bytes, false))
+}
+async fn workbook_download(
+    State(app): State<App>,
+    Query(scope): Query<Scope>,
+    Path(id): Path<String>,
+) -> Result<Response> {
+    let s = scope.id()?;
+    let (name, bytes) =
+        blocking(move || data::sources::download(&app.store.connect()?, &s, &id)).await?;
+    Ok(source_download(name, bytes, true))
 }
 async fn config(
     State(app): State<App>,

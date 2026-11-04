@@ -136,7 +136,12 @@ pub async fn run(
             return Ok(());
         }
         if engine.rounds == capability.max_rounds()
-            || engine.ids.len() + response.calls.len() > MAX_CALLS
+            || engine.ids.len() + response.calls.len()
+                > if capability == Capability::TestCases {
+                    64
+                } else {
+                    MAX_CALLS
+                }
         {
             return Err(Error::provider(
                 "Native turn reached its model round or tool call limit.",

@@ -7,7 +7,7 @@ const fields = {
   expect_visible: ['action', 'target'], expect_text: ['action', 'target', 'value'],
   expect_url: ['action', 'value'], expect_title: ['action', 'value'], expect_count: ['action', 'target', 'count'],
 };
-export function validateSteps(steps) {
+export function validateSteps(steps, {requireNavigation = true} = {}) {
   if (!Array.isArray(steps) || !steps.length || steps.length > 40) throw new Error('Use 1–40 test steps.');
   for (const s of steps) {
     if (!s || !actions.includes(s.action) || Object.keys(s).some(k => !fields[s.action].includes(k))) throw new Error('Invalid test step.');
@@ -21,7 +21,7 @@ export function validateSteps(steps) {
     if (s.action === 'check' && typeof s.checked !== 'boolean') throw new Error('Check requires checked: true or false.');
     if (s.action === 'expect_count' && (!Number.isInteger(s.count) || s.count < 0 || s.count > 1000)) throw new Error('Invalid expected count.');
   }
-  if (steps[0].action !== 'navigate') throw new Error('The first step must navigate to a page.');
+  if (requireNavigation && steps[0].action !== 'navigate') throw new Error('The first step must navigate to a page.');
   return steps;
 }
 export function allowedUrl(value, baseUrl, origins) {

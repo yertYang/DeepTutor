@@ -149,7 +149,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     if let Command::Serve { host, .. } = &cli.command
         && !host.is_loopback()
     {
-        return Err("Native server currently requires a loopback bind; multi-user authentication is not migrated yet.".into());
+        return Err("Bind the native API to loopback and expose the Next.js frontend for multi-user access.".into());
     }
     let app = Application::open(&cli.home)?;
     if matches!(&cli.command, Command::Serve { .. } | Command::Start { .. }) {
@@ -201,6 +201,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::Serve { host, port } => {
             let listener = tokio::net::TcpListener::bind((host, port)).await?;
+            deeptutor_server::browser_testing::block_control_port(listener.local_addr()?.port());
             eprintln!(
                 "Lorevia Rust listening on http://{} (protocol 2.0)",
                 listener.local_addr()?

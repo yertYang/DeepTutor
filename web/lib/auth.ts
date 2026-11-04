@@ -11,6 +11,7 @@ import { updateRecoveryPrincipal } from "@/lib/recovery-principal";
 // is driven by `setRuntimeAuthEnabled`, which `fetchAuthStatus` calls below.
 
 export interface AuthStatus {
+  native_accounts?: boolean;
   enabled: boolean;
   authenticated: boolean;
   user_id?: string;

@@ -19,6 +19,8 @@ COPY VERSION /build/VERSION
 RUN npm run build
 
 FROM node:22.23.4-bookworm-slim AS production
+ARG DEEPTUTOR_BUILD_REVISION=unknown
+LABEL org.opencontainers.image.revision=$DEEPTUTOR_BUILD_REVISION
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

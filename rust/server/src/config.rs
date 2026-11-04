@@ -10,9 +10,11 @@ use std::{
 
 pub struct Settings {
     pub user_root: PathBuf,
+    pub(crate) shared: Option<std::sync::Arc<Settings>>,
+    pub(crate) account_id: Option<String>,
     pub(crate) codex: crate::codex_session::Runtime,
     mutations: std::sync::Mutex<()>,
-    _lock: HomeLock,
+    _lock: Option<HomeLock>,
 }
 pub(crate) struct HomeLock(std::fs::File);
 impl Drop for HomeLock {
@@ -116,15 +118,6 @@ impl Settings {
         for filename in ["auth.json", "integrations.json"] {
             safe_path(&user_root, &user_root.join("settings").join(filename))?;
         }
-        let auth = read_json(&user_root.join("settings/auth.json"), json!({}))?;
-        let env_auth = std::env::var("DEEPTUTOR_AUTH_ENABLED").unwrap_or_default();
-        if auth["enabled"] == true
-            || matches!(env_auth.to_lowercase().as_str(), "1" | "true" | "yes")
-        {
-            return Err(Error::unsupported(
-                "This native server currently supports local single-user mode. Existing authentication must not be bypassed.",
-            ));
-        }
         let integrations = read_json(&user_root.join("settings/integrations.json"), json!({}))?;
         if !text(&integrations, "pocketbase_url").is_empty()
             || std::env::var("POCKETBASE_URL").is_ok_and(|s| !s.is_empty())
@@ -135,18 +128,46 @@ impl Settings {
         }
         let settings = Self {
             user_root,
+            shared: None,
+            account_id: None,
             codex: Default::default(),
             mutations: std::sync::Mutex::new(()),
-            _lock: lock,
+            _lock: Some(lock),
         };
         settings.recover_apply()?;
         Ok(settings)
+    }
+    pub(crate) fn for_account(shared: std::sync::Arc<Self>, id: &str) -> Result<Self> {
+        crate::accounts::validate_id(id)?;
+        let data = shared.user_root.parent().ok_or_else(Error::missing)?;
+        let user_root = data.join("users").join(id).join("user");
+        safe_path(data, &user_root.join("settings"))?;
+        std::fs::create_dir_all(user_root.join("settings"))?;
+        Ok(Self {
+            user_root,
+            shared: Some(shared),
+            account_id: Some(id.to_owned()),
+            codex: Default::default(),
+            mutations: std::sync::Mutex::new(()),
+            _lock: None,
+        })
     }
     pub fn catalog(&self) -> Result<Value> {
         let _guard = self.settings_lock()?;
         self.catalog_locked()
     }
     pub(crate) fn catalog_locked(&self) -> Result<Value> {
+        let own = self.personal_catalog_locked()?;
+        if let (Some(shared), Some(id)) = (&self.shared, &self.account_id) {
+            return crate::accounts::effective_catalog(own, shared, id);
+        }
+        Ok(own)
+    }
+    pub(crate) fn personal_catalog(&self) -> Result<Value> {
+        let _guard = self.settings_lock()?;
+        self.personal_catalog_locked()
+    }
+    fn personal_catalog_locked(&self) -> Result<Value> {
         let path = self.user_root.join("settings/model_catalog.json");
         safe_path(&self.user_root, &path)?;
         let mut value = read_json(&path, json!({"version":1,"connections":[],"services":{}}))?;
@@ -193,7 +214,8 @@ impl Settings {
         {
             return Err(Error::invalid("Invalid model catalog."));
         }
-        restore_catalog(proposed, &self.catalog_locked()?)
+        // Masked values may only restore this account's own saved secrets.
+        restore_catalog(proposed, &self.personal_catalog_locked()?)
     }
     pub(crate) fn settings_lock(&self) -> Result<std::sync::MutexGuard<'_, ()>> {
         let guard = self
@@ -240,6 +262,41 @@ impl Settings {
         self.recover_apply()
     }
     pub fn model(&self, selection: &Value) -> Result<Model> {
+        if let Some(shared) = &self.shared {
+            let catalog = self.catalog()?;
+            let llm = &catalog["services"]["llm"];
+            let profile = selection["profile_id"]
+                .as_str()
+                .unwrap_or(text(llm, "active_profile_id"));
+            let model = selection["model_id"]
+                .as_str()
+                .unwrap_or(text(llm, "active_model_id"));
+            let permitted = llm["profiles"].as_array().into_iter().flatten().any(|p| {
+                p["id"] == profile
+                    && p["models"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .any(|m| m["id"] == model)
+            });
+            if !permitted {
+                return Err(Error::invalid(
+                    "Select a personal model or a model assigned to your account.",
+                ));
+            }
+            let mut resolved = if let Some(id) = profile.strip_prefix("personal:") {
+                resolve_model(
+                    &self.personal_catalog()?,
+                    &json!({"profile_id":id,"model_id":model,"reasoning_effort":selection["reasoning_effort"]}),
+                )?
+            } else if let Some(id) = profile.strip_prefix("assigned:") {
+                shared.model(&json!({"profile_id":id,"model_id":model,"reasoning_effort":selection["reasoning_effort"]}))?
+            } else {
+                return Err(Error::invalid("Invalid model ownership scope."));
+            };
+            resolved.profile_id = profile.to_owned();
+            return Ok(resolved);
+        }
         resolve_model(&self.catalog()?, selection)
     }
     pub fn options(&self) -> Result<Value> {
@@ -249,12 +306,13 @@ impl Settings {
         for p in llm["profiles"].as_array().into_iter().flatten() {
             for m in p["models"].as_array().into_iter().flatten() {
                 let selection = json!({"profile_id":p["id"],"model_id":m["id"]});
-                let Ok(model) = resolve_model(&catalog, &selection) else {
+                let Ok(model) = self.model(&selection) else {
                     continue;
                 };
                 options.push(json!({"profile_id":p["id"],"model_id":m["id"],"profile_name":p["name"],
                  "model_name":m.get("name").unwrap_or(&m["model"]),"model":model.model,
                  "provider":model.binding,"provider_label":model.binding,
+                 "source":if self.shared.is_some() && model.profile_id.starts_with("assigned:"){"admin"}else{"personal"},
                  "is_active_default":p["id"]==llm["active_profile_id"]&&m["id"]==llm["active_model_id"],
                  "supported_reasoning_efforts":efforts(m,&model.binding),"reasoning_effort":model.effort,"supports_vision":false}));
             }
@@ -301,6 +359,14 @@ fn efforts(model: &Value, binding: &str) -> Value {
     json!([])
 }
 fn effective_profile(catalog: &Value, profile: &Value, model: &Value) -> Result<Value> {
+    effective_service_profile(catalog, profile, model, "llm")
+}
+pub(crate) fn effective_service_profile(
+    catalog: &Value,
+    profile: &Value,
+    model: &Value,
+    service: &str,
+) -> Result<Value> {
     let reference = model
         .get("provider_ref")
         .filter(|r| !r.is_null())
@@ -364,7 +430,7 @@ fn effective_profile(catalog: &Value, profile: &Value, model: &Value) -> Result<
             result["base_url"] = reference["default_base_url"].clone();
         }
     }
-    let overrides = &source["service_overrides"]["llm"];
+    let overrides = &source["service_overrides"][service];
     if overrides["enabled"] == true {
         for key in ["binding", "base_url"] {
             if !text(overrides, key).is_empty() {
@@ -617,6 +683,11 @@ pub fn http_client() -> Result<reqwest::Client> {
 }
 
 pub async fn response_json(response: reqwest::Response, limit: usize) -> Result<Value> {
+    let body = response_bytes(response, limit).await?;
+    serde_json::from_slice(&body).map_err(|_| Error::provider("Provider returned invalid JSON."))
+}
+
+pub async fn response_bytes(response: reqwest::Response, limit: usize) -> Result<Vec<u8>> {
     use futures_util::StreamExt;
     if response.content_length().is_some_and(|n| n > limit as u64) {
         return Err(Error::provider("Provider response exceeds size limit."));
@@ -630,7 +701,7 @@ pub async fn response_json(response: reqwest::Response, limit: usize) -> Result<
         }
         body.extend_from_slice(&chunk);
     }
-    serde_json::from_slice(&body).map_err(|_| Error::provider("Provider returned invalid JSON."))
+    Ok(body)
 }
 
 fn identified_items<'a>(value: &'a Value, name: &str) -> Result<&'a Vec<Value>> {

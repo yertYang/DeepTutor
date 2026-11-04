@@ -125,6 +125,16 @@ pub async fn execute(
             "Search provider changed. Start a new turn to use its new configuration.",
         ));
     }
+    search(profile, selected, &query).await
+}
+
+pub(crate) async fn preview(catalog: &Value, id: &str, query: &str) -> Result<Value> {
+    let profile = profile(catalog, id)?;
+    let selected = identify(profile)?;
+    search(profile, &selected, query).await
+}
+
+async fn search(profile: &Value, selected: &Selection, query: &str) -> Result<Value> {
     let client = http_client()?;
     let endpoint = if selected.base_url.ends_with("/search") {
         selected.base_url.clone()
@@ -132,7 +142,7 @@ pub async fn execute(
         format!("{}/search", selected.base_url)
     };
     let request=match selected.provider.as_str(){
-        "searxng"=>client.get(endpoint).query(&[("q",query.as_str()),("format","json")]),
+        "searxng"=>client.get(endpoint).query(&[("q",query),("format","json")]),
         "tavily"=>client.post(endpoint).json(&json!({"api_key":profile["api_key"],"query":query,"max_results":5,"search_depth":"basic","include_answer":false,"include_raw_content":false})),
         "serper"=>client.post(endpoint).header("X-API-KEY",text(profile,"api_key")).json(&json!({"q":query,"num":5})),
         _=>return Err(Error::unsupported("Search provider is unavailable.")),

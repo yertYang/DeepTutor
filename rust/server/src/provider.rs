@@ -204,8 +204,19 @@ pub(crate) async fn round(
     suppress_text: bool,
     context: Option<&crate::codex_session::Context>,
 ) -> Result<Round> {
+    // Waiting-input turns and multi-round tool calls may outlive a grant edit.
+    // Recheck the selected model before every new upstream request as well as
+    // at admission, so a resumed turn cannot keep using a revoked model.
+    if settings.shared.is_some() {
+        settings.model(&json!({"profile_id":model.profile_id,"model_id":model.model_id}))?;
+    }
     if model.binding == "openai_codex" {
-        let credentials = crate::oauth::credentials(settings.clone()).await?;
+        let credential_settings = if model.profile_id.starts_with("assigned:") {
+            settings.shared.as_ref().unwrap_or(&settings).clone()
+        } else {
+            settings.clone()
+        };
+        let credentials = crate::oauth::credentials(credential_settings.clone()).await?;
         if let Some(binding) = &model.account_binding {
             use sha2::{Digest, Sha256};
             if *binding
@@ -220,7 +231,7 @@ pub(crate) async fn round(
             }
         }
         let installation =
-            crate::codex_session::installation(settings.clone(), &credentials).await?;
+            crate::codex_session::installation(credential_settings, &credentials).await?;
         let prepared = settings.codex.prepare(
             text(&credentials, "account_id"),
             credentials["generation"].as_u64().unwrap(),

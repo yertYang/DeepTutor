@@ -35,7 +35,7 @@ export function settingsAccessFromAuthStatus(
     showLearnerOnly:
       ordinaryAuthenticatedUser && authStatus.preset === "learner",
     showGuardianOnly:
-      ordinaryAuthenticatedUser &&
+      !authStatus.native_accounts && ordinaryAuthenticatedUser &&
       (authStatus.preset === "standard" || authStatus.preset === "custom"),
   };
 }

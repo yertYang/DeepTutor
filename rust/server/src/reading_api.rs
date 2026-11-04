@@ -56,14 +56,54 @@ async fn list(
     Query(scope): Query<Scope>,
     Query(page): Query<Page>,
 ) -> Result<Json<Value>> {
-    run(app, scope, false, move |c, s| data::list(c, s, page.offset)).await
+    let settings = app.settings.clone();
+    let accounts = app.accounts.clone();
+    run(app, scope, false, move |c, s| {
+        let mut result = data::list(c, s, page.offset)?;
+        if let Some(id) = settings.account_id.as_deref() {
+            let root = settings.shared.as_ref().unwrap_or(&settings);
+            let policy = crate::accounts_api::policy(root, &accounts.user(id)?)?;
+            if policy["reading"]["assigned_materials"].is_array() {
+                if let Some(items) = result["items"].as_array_mut() {
+                    items.retain(|item| {
+                        policy["reading"]["material_ids"]
+                            .as_array()
+                            .is_some_and(|ids| ids.iter().any(|id| id == &item["id"]))
+                    });
+                }
+            }
+        }
+        Ok(result)
+    })
+    .await
 }
 async fn add(
     State(app): State<App>,
     Query(scope): Query<Scope>,
     Json(input): Json<Value>,
 ) -> Result<Json<Value>> {
-    run(app, scope, true, move |c, s| data::add(c, s, &input)).await
+    let settings = app.settings.clone();
+    let response = run(app, scope, true, move |c, s| data::add(c, s, &input)).await?;
+    if let Some(id) = settings.account_id.clone() {
+        let item = response.0["id"].clone();
+        blocking(move || {
+            let root = settings.shared.as_ref().unwrap_or(&settings);
+            let _lock = root.settings_lock()?;
+            let mut grant = crate::accounts::grant(root, &id)?;
+            let reading = &mut grant["learning_policy"]["reading"];
+            if reading["assigned_materials"].is_array() {
+                if let Some(ids) = reading["material_ids"].as_array_mut() {
+                    if !ids.contains(&item) {
+                        ids.push(item);
+                    }
+                }
+                crate::config::write_json(&crate::accounts::grant_path(root, &id)?, &grant)?;
+            }
+            Ok(())
+        })
+        .await?;
+    }
+    Ok(response)
 }
 async fn add_web(
     State(app): State<App>,

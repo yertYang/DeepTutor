@@ -612,14 +612,19 @@ export default function ChatWorkspace() {
   // all while a session is still loading. A single attempt would land on a null
   // ref and drop the message silently — the user arrives from Settings at an
   // empty box with no idea the button did anything.
+  const pendingHandoffPromptRef = useRef<string | null>(null);
   useEffect(() => {
-    const pending = consumePendingPrompt();
+    // React may set up this effect again after cleaning it up before the first
+    // timer fires. Retain the consumed message until the composer accepts it.
+    const pending = pendingHandoffPromptRef.current ?? consumePendingPrompt();
     if (!pending) return;
+    pendingHandoffPromptRef.current = pending;
     let attempts = 0;
     let timer: ReturnType<typeof setTimeout>;
     const attempt = () => {
       if (prefillInputRef.current) {
         handlePrefillComposer(pending);
+        pendingHandoffPromptRef.current = null;
         return;
       }
       if (attempts++ >= 20) return; // ~2s, then give up quietly

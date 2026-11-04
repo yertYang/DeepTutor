@@ -9,6 +9,8 @@ import { apiFetch, apiUrl } from '@/lib/api'
 import { activeWorkspaceId, scopedUrl } from '@/lib/workspace-scope'
 import { browserStorage } from '@/shared/storage'
 import { PageHeader, pageActionClass } from '@/components/layout/FeaturePage'
+import {setPendingPrompt} from '@/lib/pending-prompt'
+import TestSourceImporter, {type TestSource} from './TestSourceImporter'
 
 type Target = { by: string; value: string; name?: string }
 type Step = { action: string; url?: string; target?: Target; value?: string; checked?: boolean; count?: number }
@@ -21,7 +23,8 @@ type Run = { id: string; case_id?: string; case_revision?: number; status: strin
   console_errors?: string[];
 } }
 type Config = { base_url: string; allowed_origins: string[]; enabled: boolean; revision: number }
-type State = { config: Config; cases: TestCase[]; runs: Run[]; engine_available: boolean }
+type WorkbookExport = {id:string;source_id:string;name:string;revision:number;download_url:string;updated_rows:number}
+type State = { config: Config; cases: TestCase[]; runs: Run[]; sources: TestSource[]; exports:WorkbookExport[]; engine_available: boolean }
 const labels: Record<string, string> = {
   navigate: 'Navigate', click: 'Click', fill: 'Fill', press: 'Press key', select: 'Select option', check: 'Check or uncheck',
   expect_visible: 'Expect visible', expect_text: 'Expect text', expect_url: 'Expect URL', expect_title: 'Expect title', expect_count: 'Expect count',
@@ -128,10 +131,22 @@ export default function BrowserTestingWorkspace() {
   }
   return <section className="h-full min-h-0 overflow-auto p-4 md:p-6">
     <PageHeader icon={Globe} title={t('Browser testing')} description={t('Inspect websites, write browser tests and keep the results in this workspace.')} action={
-      <div className="flex gap-2"><button className={pageActionClass('secondary')} disabled={busy} onClick={() => void perform(async () => { await refresh() })}>{t('Refresh')}</button><Link className={pageActionClass('secondary')} href={scopedUrl('/chat?capability=test_cases', scope)}>{t('Write Test Cases')}</Link></div>
+      <div className="flex gap-2"><button className={pageActionClass('secondary')} disabled={busy} onClick={() => void perform(async () => { await refresh() })}>{t('Refresh')}</button><Link className={pageActionClass('secondary')} href={scopedUrl('/chat?capability=test_cases', scope)}>{t('Test')}</Link></div>
     } />
     {error && <div role="alert" className="my-3 rounded-lg bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-300">{error}<button className="ml-3 underline" onClick={() => void perform(async () => { const next = await refresh(); setConfig(next.config); setOrigins(next.config.allowed_origins.join('\n')) })}>{t('Reload page')}</button></div>}
     {!state || !config ? <p role="status">{t('Loading...')}</p> : <div className="space-y-5">
+      <section className={panelClass} aria-label={t('Test input files')}>
+        <h2 className="mb-3 font-semibold">{t('Test input files')}</h2>
+        <TestSourceImporter workspaceId={scope} onImported={()=>{void refresh()}}/>
+        <ul className="mt-3 space-y-2">{(state.sources??[]).map(source=><li key={source.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--muted)] p-3 text-sm">
+          <span className="break-all">{source.name} · {t('Revision')} {source.revision}</span>
+          <div className="flex gap-3">
+            <button className="underline" onClick={()=>void perform(()=>download(`/sources/${encodeURIComponent(source.id)}/original`,source.name))}>{t('Download original')}</button>
+            <Link className="underline" href={scopedUrl('/chat?capability=test_cases',scope)} onClick={()=>setPendingPrompt(t('Read imported test file {{name}}, use the URLs and requirements in the imported files to test the website, and update the Excel cases with actual results and report links. Mark unexecuted cases honestly. Return the updated workbook download link.',{name:source.name}))}>{t('Test from this file')}</Link>
+          </div>
+        </li>)}</ul>
+        {(state.exports??[]).length>0&&<div className="mt-4"><h3 className="font-medium">{t('Updated Excel workbooks')}</h3><ul className="mt-2 space-y-2">{state.exports.map(file=><li key={file.id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>{file.name}</span><button className="inline-flex items-center gap-1 underline" onClick={()=>void perform(()=>download(`/exports/${encodeURIComponent(file.id)}`,file.name))}><Download size={14}/>{t('Download updated Excel')}</button></li>)}</ul></div>}
+      </section>
       <section className={panelClass} aria-label={t('Test websites')}>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1 text-sm"><span>{t('Base URL')}</span><input className={fieldClass} value={config.base_url} onChange={e => setConfig({ ...config, base_url: e.target.value })} /></label>
@@ -146,7 +161,7 @@ export default function BrowserTestingWorkspace() {
           <button className={pageActionClass('secondary')} disabled={busy || config.revision === 0} onClick={() => void perform(() => start(true))}>{t('Inspect page')}</button>
         </div>
         <p className="mt-3 text-xs text-[var(--muted-foreground)]">{t('Only the listed websites can be accessed. Each run uses a fresh browser without your personal login sessions.')}</p>
-        {config.enabled && <p className="mt-2 text-sm">{t('Choose Write Test Cases mode to inspect the configured website, save a test, run it and fix any failures.')}</p>}
+        <p className="mt-2 text-sm">{t('In Test mode, provide a URL to operate the website directly. Website settings and saved cases here are optional.')}</p>
         {!state.engine_available && <p role="status" className="mt-2 text-sm">{t('The browser engine is not installed in this runtime.')}</p>}
       </section>
       <div className="grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">

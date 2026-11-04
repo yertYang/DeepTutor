@@ -11,6 +11,7 @@ export type UpdateJobStatus =
 
 export interface UpdateRelease {
   version: string;
+  revision?: string;
   name: string;
   published_at: string;
   url: string;
@@ -32,6 +33,7 @@ export interface UpdateJob {
 
 export interface AppUpdateStatus {
   current_version: string;
+  current_revision?: string;
   check_enabled: boolean;
   checked_at: string;
   cached: boolean;
@@ -138,11 +140,11 @@ export async function setAppUpdateChecks(
   );
 }
 
-export async function requestAppUpdate(): Promise<UpdateJob> {
+export async function requestAppUpdate(targetRevision?: string): Promise<UpdateJob> {
   const response = await apiFetch(apiUrl("/api/system/update"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ confirmation: "update-and-restart" }),
+    body: JSON.stringify({ confirmation: "update-and-restart", target_revision: targetRevision }),
   });
   if (!response.ok) throw await responseError(response);
   return (await response.json()) as UpdateJob;

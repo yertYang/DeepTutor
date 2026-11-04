@@ -1,0 +1,29 @@
+# Opt-in server code updates. Always use the same project name and file pair.
+name: lorevia
+services:
+  deeptutor:
+    build:
+      args:
+        DEEPTUTOR_BUILD_REVISION: ${DEEPTUTOR_BUILD_REVISION:-unknown}
+    environment:
+      DEEPTUTOR_AUTH_ENABLED: "true"
+      DEEPTUTOR_UPDATER_URL: http://updater:9090
+      DEEPTUTOR_UPDATE_TOKEN: ${DEEPTUTOR_UPDATE_TOKEN:?Set a random update token in .env}
+    depends_on:
+      - updater
+  updater:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.updater
+    environment:
+      DEEPTUTOR_REPO: ${DEEPTUTOR_REPO:?Set the absolute server checkout path in .env}
+      DEEPTUTOR_UPDATE_TOKEN: ${DEEPTUTOR_UPDATE_TOKEN:?Set a random update token in .env}
+      COMPOSE_PROJECT_NAME: lorevia
+    volumes:
+      - ${DEEPTUTOR_REPO}:${DEEPTUTOR_REPO}
+      - /var/run/docker.sock:/var/run/docker.sock
+      - update-state:/state
+    restart: unless-stopped
+    init: true
+volumes:
+  update-state:
