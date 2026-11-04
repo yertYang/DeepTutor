@@ -14,6 +14,8 @@ clap = { version = "4", features = ["derive", "env"] }
 chrono = { version = "=0.4.42", features = ["serde"] }
 rrule = "=0.14.0"
 chrono-tz = "=0.10.4"
+scraper = "=0.24.0"
+encoding_rs = "=0.8.44"
 deeptutor-codex = { path = "../codex" }
 fs2 = "0.4"
 pdf-extract = "=0.9.0"

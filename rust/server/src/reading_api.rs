@@ -12,6 +12,7 @@ type App = Arc<Application>;
 pub fn router() -> Router<App> {
     Router::new()
         .route("/api/reading/items", get(list).post(add))
+        .route("/api/reading/items/web", post(add_web))
         .route(
             "/api/reading/items/{id}",
             get(read).patch(rename).delete(delete),
@@ -63,6 +64,26 @@ async fn add(
     Json(input): Json<Value>,
 ) -> Result<Json<Value>> {
     run(app, scope, true, move |c, s| data::add(c, s, &input)).await
+}
+async fn add_web(
+    State(app): State<App>,
+    Query(scope): Query<Scope>,
+    Json(input): Json<Value>,
+) -> Result<Json<Value>> {
+    let request = input.clone();
+    let prior = run(app.clone(), scope.clone(), false, move |c, s| {
+        Ok(data::web_receipt(c, s, &request)?.unwrap_or(Value::Null))
+    })
+    .await?;
+    if !prior.0.is_null() {
+        return Ok(prior);
+    }
+    let url = data::web_url(&input)?;
+    let snapshot = crate::web_reading::fetch(&url).await?;
+    run(app, scope, true, move |c, s| {
+        data::add_web(c, s, &input, snapshot)
+    })
+    .await
 }
 macro_rules! read_handler {
     ($name:ident, $func:ident) => {

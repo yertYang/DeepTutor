@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::sync::Arc;
 
-#[derive(Deserialize, Default)]
+#[derive(Clone, Deserialize, Default)]
 pub(crate) struct Scope {
     workspace_id: Option<String>,
     dt_workspace: Option<String>,

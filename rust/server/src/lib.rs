@@ -66,3 +66,5 @@ pub mod memory_cli;
 
 pub mod flashcards;
 mod flashcards_api;
+
+mod web_reading;

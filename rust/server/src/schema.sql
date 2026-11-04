@@ -175,3 +175,8 @@ CREATE TABLE IF NOT EXISTS native_flashcard_receipts (
  workspace_id TEXT NOT NULL,command_id TEXT NOT NULL,digest TEXT NOT NULL,payload_json TEXT NOT NULL,
  PRIMARY KEY(workspace_id,command_id)
 );
+
+CREATE TABLE IF NOT EXISTS native_reading_web_receipts(
+ workspace_id TEXT NOT NULL,command_id TEXT NOT NULL,request_url TEXT NOT NULL,item_id TEXT NOT NULL,
+ PRIMARY KEY(workspace_id,command_id)
+);

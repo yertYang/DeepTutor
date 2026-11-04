@@ -226,8 +226,8 @@
         "annotations": true,
         "note_clips": true,
         "export": true,
-        "web_reading": false,
-        "ai_reading_tutor": false,
+        "web_reading": true,
+        "ai_reading_tutor": true,
         "media": false
       }
     },

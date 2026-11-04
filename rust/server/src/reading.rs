@@ -101,23 +101,66 @@ pub fn add(c: &Connection, s: &str, input: &Value) -> Result<Value> {
     if content.len() > knowledge::MAX_FILE || original.len() > knowledge::MAX_BATCH {
         return Err(Error::invalid("Reading source exceeds the import limit."));
     }
+    save_snapshot(
+        c,
+        s,
+        &SourceSnapshot {
+            kb,
+            path: path.clone(),
+            hash,
+            title: path,
+            kind: "local".into(),
+            source_url: None,
+            mime: "application/octet-stream".into(),
+            content,
+            original,
+        },
+    )
+}
+struct SourceSnapshot {
+    kb: String,
+    path: String,
+    hash: String,
+    title: String,
+    kind: String,
+    source_url: Option<String>,
+    mime: String,
+    content: String,
+    original: Vec<u8>,
+}
+fn save_snapshot(c: &Connection, s: &str, source: &SourceSnapshot) -> Result<Value> {
+    let prior:Option<String>=c.query_row("SELECT id FROM native_reading_items WHERE workspace_id=? AND kb=? AND path=? AND original_hash=?",params![s,source.kb,source.path,source.hash],|r|r.get(0)).optional()?;
+    if let Some(prior) = prior {
+        return read(c, s, &prior);
+    }
+    if source.content.len() > knowledge::MAX_FILE || source.original.len() > knowledge::MAX_BATCH {
+        return Err(Error::invalid("Reading source exceeds the import limit."));
+    }
     let source_id = format!(
         "{:x}",
-        Sha256::digest([hash.as_bytes(), b"\0", content.as_bytes()].concat())
+        Sha256::digest([source.hash.as_bytes(), b"\0", source.content.as_bytes()].concat())
     );
     c.execute(
-        "INSERT OR IGNORE INTO native_reading_sources VALUES (?,?,?,?)",
-        params![s, source_id, content, original],
+        "INSERT OR IGNORE INTO native_reading_sources VALUES(?,?,?,?)",
+        params![s, source_id, source.content, source.original],
     )?;
     let item = id();
     let at = now();
-    let v = json!({"id":item,"source_id":source_id,"kb":kb,"path":path,"original_hash":hash,"title":path,"line_count":content.split('\n').count(),"revision":0,"created_at":at,"updated_at":at});
+    let v = json!({"id":item,"source_id":source_id,"kb":source.kb,"path":source.path,"original_hash":source.hash,"title":source.title,"kind":source.kind,"source_url":source.source_url,"mime":source.mime,"line_count":source.content.split('\n').count(),"revision":0,"created_at":at,"updated_at":at});
     c.execute(
-        "INSERT INTO native_reading_items VALUES (?,?,?,?,?,?,?)",
-        params![s, item, source_id, kb, path, hash, v.to_string()],
+        "INSERT INTO native_reading_items VALUES(?,?,?,?,?,?,?)",
+        params![
+            s,
+            item,
+            source_id,
+            source.kb,
+            source.path,
+            source.hash,
+            v.to_string()
+        ],
     )?;
     c.execute(
-        "INSERT INTO native_reading_progress VALUES (?,?,?)",
+        "INSERT INTO native_reading_progress VALUES(?,?,?)",
         params![
             s,
             item,
@@ -125,6 +168,111 @@ pub fn add(c: &Connection, s: &str, input: &Value) -> Result<Value> {
         ],
     )?;
     read(c, s, &item)
+}
+pub fn web_url(input: &Value) -> Result<String> {
+    object(input, &["url", "command_id"])?;
+    string(input, "command_id", 128, true)?;
+    crate::web_reading::canonical_url(&string(input, "url", 4096, true)?)
+}
+pub fn web_receipt(c: &Connection, s: &str, input: &Value) -> Result<Option<Value>> {
+    let url = web_url(input)?;
+    let prior:Option<(String,String)>=c.query_row("SELECT request_url,item_id FROM native_reading_web_receipts WHERE workspace_id=? AND command_id=?",params![s,text(input,"command_id")],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
+    if let Some((old, item)) = prior {
+        if old != url {
+            return Err(Error::conflict(
+                "Web import command was reused with another URL.",
+            ));
+        }
+        return read(c, s, &item).map(Some).map_err(|e| {
+            if e.code == "not_found" {
+                Error::conflict(
+                    "This reading copy was deleted. Start a new import to save another copy.",
+                )
+            } else {
+                e
+            }
+        });
+    }
+    Ok(None)
+}
+pub(crate) fn add_web(
+    c: &Connection,
+    s: &str,
+    input: &Value,
+    snapshot: crate::web_reading::Snapshot,
+) -> Result<Value> {
+    if let Some(prior) = web_receipt(c, s, input)? {
+        return Ok(prior);
+    }
+    let url = web_url(input)?;
+    if snapshot.requested_url != url {
+        return Err(Error::conflict(
+            "The downloaded page does not match this import.",
+        ));
+    }
+    let hash = format!("{:x}", Sha256::digest(&snapshot.original));
+    let v = save_snapshot(
+        c,
+        s,
+        &SourceSnapshot {
+            kb: "Web".into(),
+            path: snapshot.url.clone(),
+            hash,
+            title: snapshot.title,
+            kind: "web".into(),
+            source_url: Some(snapshot.url),
+            mime: snapshot.mime,
+            content: snapshot.content,
+            original: snapshot.original,
+        },
+    )?;
+    c.execute(
+        "INSERT INTO native_reading_web_receipts VALUES(?,?,?,?)",
+        params![s, text(input, "command_id"), url, text(&v, "id")],
+    )?;
+    Ok(v)
+}
+
+pub fn tutor_context(
+    c: &Connection,
+    s: &str,
+    input: &Value,
+) -> Result<crate::study::ProposalContext> {
+    object(input, &["item_id", "source_id", "start_line", "end_line"])?;
+    let item = string(input, "item_id", 64, true)?;
+    let row = metadata(c, s, &item)?;
+    if input["source_id"] != row["source_id"] {
+        return Err(Error::conflict("The selected source snapshot changed."));
+    }
+    let start = input["start_line"]
+        .as_u64()
+        .filter(|n| *n >= 1)
+        .ok_or_else(|| Error::invalid("Select the first source line."))?;
+    let end = input["end_line"]
+        .as_u64()
+        .filter(|n| {
+            *n >= start && *n - start < 500 && *n <= row["line_count"].as_u64().unwrap_or(0)
+        })
+        .ok_or_else(|| Error::invalid("Select at most 500 existing source lines."))?;
+    let content = source(c, s, &item)?;
+    let excerpt = content
+        .split('\n')
+        .enumerate()
+        .skip((start - 1) as usize)
+        .take((end - start + 1) as usize)
+        .map(|(n, text)| json!({"line":n+1,"text":text}))
+        .collect::<Vec<_>>();
+    let mut citation = reqwest::Url::parse("http://localhost").expect("constant URL");
+    citation.set_path(&format!("/learning/reading/{item}"));
+    citation.query_pairs_mut().append_pair("dt_workspace", s);
+    let target = json!({"item_id":item,"source_id":row["source_id"],"title":row["title"],"original_hash":row["original_hash"],"source_url":row["source_url"],"start_line":start,"end_line":end,"citation_base":&citation.as_str()["http://localhost".len()..]});
+    let source = json!({"reading_source":target,"excerpt":excerpt}).to_string();
+    if source.len() > 64 * 1024 {
+        return Err(Error::invalid(
+            "The excerpt exceeds 64 KiB. Select a smaller line range.",
+        ));
+    }
+    Ok(crate::study::ProposalContext { target, source })
 }
 pub fn rename(c: &Connection, s: &str, item: &str, input: &Value) -> Result<Value> {
     object(input, &["title", "expected_revision"])?;
@@ -184,14 +332,21 @@ pub fn original(c: &Connection, s: &str, item: &str) -> Result<(String, Vec<u8>)
         params![s, text(&v, "source_id")],
         |r| r.get(0),
     )?;
-    Ok((
+    let name = if v["kind"] == "web" {
+        if text(&v, "mime").starts_with("text/plain") {
+            "web-snapshot.txt"
+        } else {
+            "web-snapshot.html"
+        }
+        .to_owned()
+    } else {
         text(&v, "path")
             .rsplit('/')
             .next()
             .unwrap_or("document")
-            .to_string(),
-        bytes,
-    ))
+            .to_owned()
+    };
+    Ok((name, bytes))
 }
 pub fn annotations(c: &Connection, s: &str, item: &str) -> Result<Value> {
     metadata(c, s, item)?;
@@ -689,5 +844,98 @@ mod tests {
         .unwrap();
         assert_eq!(source(&c, "a", text(&items[1], "id")).unwrap(), "共享原文");
         assert!(list(&c, "a", 100001).is_err());
+    }
+}
+
+#[cfg(test)]
+mod web_and_tutor_tests {
+    use super::*;
+    fn db() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
+        c.execute_batch(include_str!("schema.sql")).unwrap();
+        c
+    }
+    fn snapshot() -> crate::web_reading::Snapshot {
+        crate::web_reading::Snapshot {
+            requested_url: "https://example.com/article".into(),
+            url: "https://example.com/final".into(),
+            title: "Web title".into(),
+            mime: "text/html".into(),
+            content: "Energy is conserved.\nSecond source line.".into(),
+            original: b"<article>Energy is conserved.</article>".to_vec(),
+        }
+    }
+    #[test]
+    fn web_snapshots_and_receipts_preserve_edits_without_refetching_or_resurrecting() {
+        let c = db();
+        let input = json!({"url":"https://example.com/article#part","command_id":"web-1"});
+        let item = add_web(&c, "a", &input, snapshot()).unwrap();
+        assert_eq!(item["source_url"], "https://example.com/final");
+        assert_eq!(
+            original(&c, "a", text(&item, "id")).unwrap().0,
+            "web-snapshot.html"
+        );
+        let renamed = rename(
+            &c,
+            "a",
+            text(&item, "id"),
+            &json!({"title":"Human title","expected_revision":0}),
+        )
+        .unwrap();
+        assert_eq!(web_receipt(&c, "a", &input).unwrap().unwrap(), renamed);
+        assert_eq!(
+            add_web(
+                &c,
+                "a",
+                &json!({"url":"https://example.com/article","command_id":"web-2"}),
+                snapshot()
+            )
+            .unwrap(),
+            renamed
+        );
+        assert!(
+            web_receipt(
+                &c,
+                "a",
+                &json!({"url":"https://other.example.com/article","command_id":"web-1"})
+            )
+            .is_err()
+        );
+        assert!(web_receipt(&c, "other", &input).unwrap().is_none());
+        delete(&c, "a", text(&item, "id"), &json!({"expected_revision":1})).unwrap();
+        assert!(web_receipt(&c, "a", &input).is_err());
+    }
+    #[test]
+    fn tutor_context_is_frozen_numbered_and_workspace_bound() {
+        let c = db();
+        let item = add_web(
+            &c,
+            "a",
+            &json!({"url":"https://example.com/article","command_id":"web-1"}),
+            snapshot(),
+        )
+        .unwrap();
+        let input =
+            json!({"item_id":item["id"],"source_id":item["source_id"],"start_line":1,"end_line":1});
+        let context = tutor_context(&c, "a", &input).unwrap();
+        let data: Value = serde_json::from_str(&context.source).unwrap();
+        assert_eq!(
+            data["excerpt"],
+            json!([{"line":1,"text":"Energy is conserved."}])
+        );
+        assert!(
+            context.target["citation_base"]
+                .as_str()
+                .unwrap()
+                .contains("dt_workspace=a")
+        );
+        assert!(tutor_context(&c, "other", &input).is_err());
+        let mut changed = input.clone();
+        changed["source_id"] = json!("wrong");
+        assert!(tutor_context(&c, "a", &changed).is_err());
+        changed = input;
+        changed["end_line"] = json!(3);
+        assert!(tutor_context(&c, "a", &changed).is_err());
     }
 }

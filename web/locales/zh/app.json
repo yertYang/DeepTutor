@@ -6689,5 +6689,14 @@
   "Front": "正面",
   "Edit both sides, save, then reveal the answer before grading. Changed cards restart their review schedule.": "编辑卡片正反面并保存，显示答案后再评分。修改过的卡片将重新开始复习排程。",
   "No flashcards due. Come back when the next review is scheduled.": "当前没有到期闪卡，请在下次复习时间再来。",
-  "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards.": "闪卡已在其他位置修改。本地草稿已保留，可重新载入已保存卡片。"
+  "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards.": "闪卡已在其他位置修改。本地草稿已保留，可重新载入已保存卡片。",
+  "Web page URL": "网页地址",
+  "Save web page": "保存网页",
+  "Save a public HTML or text page for offline reading. Pages requiring login or JavaScript should be saved in your browser and imported as a document.": "保存公开的 HTML 或文本网页，供离线阅读。需要登录或运行 JavaScript 的页面，请先在浏览器中保存，再作为文档导入。",
+  "Reading tutor": "阅读助手",
+  "The tutor receives only lines {{start}}–{{end}} from this saved snapshot. Select another passage to change the context.": "阅读助手仅接收此快照的第 {{start}}–{{end}} 行。选择其他段落可更改讨论上下文。",
+  "The tutor needs a clarification. Open the conversation to answer, or stop this response.": "阅读助手需要进一步确认，请打开对话回答，或停止此次响应。",
+  "Question about this passage": "关于这段内容的问题",
+  "Ask tutor": "询问阅读助手",
+  "Stop response": "停止响应"
 }

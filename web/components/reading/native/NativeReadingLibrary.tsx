@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +18,8 @@ export default function NativeReadingLibrary({ progressOnly = false }: { progres
   const [items, setItems] = useState<ReadingItem[]>([])
   const [next, setNext] = useState<number | null>(null)
   const [bases, setBases] = useState<{ name: string }[]>([])
+  const [webUrl, setWebUrl] = useState('')
+  const webCommand = useRef<{ url: string; id: string } | null>(null)
   const [kb, setKb] = useState('')
   const [files, setFiles] = useState<{ name: string; sha256: string }[]>([])
   const [file, setFile] = useState('')
@@ -106,6 +108,48 @@ export default function NativeReadingLibrary({ progressOnly = false }: { progres
         <p role="alert" className="mb-4 break-words text-sm text-red-600">
           {error}
         </p>
+      )}
+      {!progressOnly && (
+        <form
+          className="mb-4 flex flex-wrap gap-3 rounded-xl border border-[var(--border)] p-4"
+          onSubmit={event => {
+            event.preventDefault()
+            const url = webUrl.trim()
+            if (webCommand.current?.url !== url)
+              webCommand.current = { url, id: crypto.randomUUID() }
+            void perform(async () => {
+              const item = await readingRequest<ReadingItem>(scope, '/web', {
+                url,
+                command_id: webCommand.current!.id,
+              })
+              webCommand.current = null
+              readingChanged()
+              router.push(scopedUrl(`/learning/reading/${item.id}`, scope))
+            })
+          }}
+        >
+          <label className="min-w-0 flex-1 text-sm">
+            {t('Web page URL')}
+            <input
+              className={inputClass}
+              type="url"
+              required
+              maxLength={4096}
+              disabled={busy}
+              value={webUrl}
+              onChange={event => setWebUrl(event.target.value)}
+              placeholder="https://example.com/article"
+            />
+          </label>
+          <button className={`${pageActionClass()} self-end`} disabled={busy || !webUrl.trim()}>
+            {t(busy ? 'Importing…' : 'Save web page')}
+          </button>
+          <p className="w-full text-xs text-[var(--muted-foreground)]">
+            {t(
+              'Save a public HTML or text page for offline reading. Pages requiring login or JavaScript should be saved in your browser and imported as a document.'
+            )}
+          </p>
+        </form>
       )}
       {!progressOnly && (
         <form

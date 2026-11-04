@@ -6691,5 +6691,14 @@
   "Front": "Front",
   "Edit both sides, save, then reveal the answer before grading. Changed cards restart their review schedule.": "Edit both sides, save, then reveal the answer before grading. Changed cards restart their review schedule.",
   "No flashcards due. Come back when the next review is scheduled.": "No flashcards due. Come back when the next review is scheduled.",
-  "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards.": "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards."
+  "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards.": "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards.",
+  "Web page URL": "Web page URL",
+  "Save web page": "Save web page",
+  "Save a public HTML or text page for offline reading. Pages requiring login or JavaScript should be saved in your browser and imported as a document.": "Save a public HTML or text page for offline reading. Pages requiring login or JavaScript should be saved in your browser and imported as a document.",
+  "Reading tutor": "Reading tutor",
+  "The tutor receives only lines {{start}}–{{end}} from this saved snapshot. Select another passage to change the context.": "The tutor receives only lines {{start}}–{{end}} from this saved snapshot. Select another passage to change the context.",
+  "The tutor needs a clarification. Open the conversation to answer, or stop this response.": "The tutor needs a clarification. Open the conversation to answer, or stop this response.",
+  "Question about this passage": "Question about this passage",
+  "Ask tutor": "Ask tutor",
+  "Stop response": "Stop response"
 }

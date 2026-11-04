@@ -11,6 +11,9 @@ export type ReadingProgress = {
 export type ReadingItem = {
   id: string
   source_id: string
+  kind?: 'local' | 'web'
+  source_url?: string | null
+  mime?: string
   kb: string
   path: string
   original_hash: string
