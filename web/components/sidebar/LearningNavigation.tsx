@@ -76,7 +76,7 @@ export function LearningNavigation({
     .filter(row =>
       row.kind === 'session'
         ? matches(titleOf(row.session), view.query)
-        : matches(`${row.record.title} ${t(learningSurface(row.record.kind).title)}`, view.query) ||
+        : matches(`${row.record.title} ${t(row.record.label ?? learningSurface(row.record.kind).title)}`, view.query) ||
           row.sessions.some(session => matches(titleOf(session), view.query))
     )
     .sort((a, b) => b.time - a.time || a.key.localeCompare(b.key))
@@ -88,7 +88,7 @@ export function LearningNavigation({
     })
   return (
     <div className="dt-learning-navigation">
-      <OverviewRow href="/learning/new" label={t('navigation.createLearning')} icon={Plus} />
+      <OverviewRow href="/learning/native" label={t('navigation.createLearning')} icon={Plus} />
       <OverviewRow
         href="/learning"
         label={t('navigation.allLearning')}

@@ -214,6 +214,8 @@ export interface KnowledgeUploadPolicy {
   accept: string;
   max_file_size_bytes: number;
   allow_any_extension?: boolean;
+  native_text_only?: boolean;
+  strict_extensions?: boolean;
 }
 
 export interface KnowledgeBaseFile {
@@ -249,6 +251,7 @@ const IMAGE_UPLOAD_MIME_TYPES = [
 function normalizeUploadPolicy(data: unknown): KnowledgeUploadPolicy {
   const payload = data as Partial<KnowledgeUploadPolicy> | null | undefined;
   const allowAnyExtension = payload?.allow_any_extension === true;
+  const textOnly = payload?.native_text_only === true || payload?.strict_extensions === true;
   const extensions = Array.from(
     new Set([
       ...(allowAnyExtension
@@ -256,7 +259,7 @@ function normalizeUploadPolicy(data: unknown): KnowledgeUploadPolicy {
         : Array.isArray(payload?.extensions)
           ? payload.extensions
           : []),
-      ...(allowAnyExtension ? [] : IMAGE_UPLOAD_EXTENSIONS),
+      ...(allowAnyExtension || textOnly ? [] : IMAGE_UPLOAD_EXTENSIONS),
     ]),
   ).sort();
   const serverAccept =
@@ -269,7 +272,7 @@ function normalizeUploadPolicy(data: unknown): KnowledgeUploadPolicy {
   const accept = allowAnyExtension
     ? ""
     : Array.from(
-        new Set([...serverAccept, ...extensions, ...IMAGE_UPLOAD_MIME_TYPES]),
+        new Set([...serverAccept, ...extensions, ...(textOnly ? [] : IMAGE_UPLOAD_MIME_TYPES)]),
       ).join(",");
 
   return {
@@ -1520,10 +1523,9 @@ export async function retryKnowledgeBase(
  * Deletes by name in the body, not in the path.
  *
  * A name registered before the `register_*` methods validated one can contain
- * a `/`. uvicorn decodes `%2F` back to a separator before routing, so the
- * path route cannot match such a name and answers 404 — leaving a KB that is
- * listed but not removable from the UI. A body has no such limit, so this is
- * the one delete that reaches every registered entry.
+ * a `/`. Decoding `%2F` into a path separator can prevent a route from matching
+ * such a name. Passing the name in the body avoids this ambiguity for legacy
+ * entries as well.
  */
 export async function deleteKnowledgeBase(name: string): Promise<void> {
   const res = await apiFetch(apiUrl(`/api/knowledge-bases/delete`), {

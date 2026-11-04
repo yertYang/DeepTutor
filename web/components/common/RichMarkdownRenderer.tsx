@@ -1,5 +1,7 @@
 "use client";
 
+import ContentImage from "@/components/common/ContentImage";
+
 import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
@@ -617,7 +619,7 @@ export default function RichMarkdownRenderer({
         );
       }
       return (
-        <img
+        <ContentImage
           src={src}
           alt={alt || ""}
           loading="lazy"

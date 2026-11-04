@@ -1,5 +1,7 @@
 "use client";
 
+import ContentImage from "@/components/common/ContentImage";
+
 /**
  * The answer card for a mastery question.
  *
@@ -224,7 +226,7 @@ const SingleMasteryQuestionCard = memo(function SingleMasteryQuestionCard({
         {question.visual.pixelsInspected === false && <p>{t("Current model input has no verified source pixels. Retrieve the image again with a vision-capable model before grading.")}</p>}
         {question.visual.sources.map((source, index) => <figure key={`${source.imageUrl}-${index}`}>
           {/* Authenticated source endpoints need the browser's own cookies. */}
-          <a href={source.imageUrl} target="_blank" rel="noreferrer"><img src={source.imageUrl} alt={t("Original source evidence")} onError={() => setSourceUnavailable(true)} className="max-h-80 max-w-full object-contain" /></a>
+          <a href={source.imageUrl} target="_blank" rel="noreferrer"><ContentImage src={source.imageUrl} alt={t("Original source evidence")} onError={() => setSourceUnavailable(true)} className="max-h-80 max-w-full object-contain" /></a>
           <figcaption><a className="underline" href={source.url} target="_blank" rel="noreferrer">{source.sourcePath}{source.page ? ` · ${t("Page")} ${source.page}` : ""}</a></figcaption>
         </figure>)}
       </div>}

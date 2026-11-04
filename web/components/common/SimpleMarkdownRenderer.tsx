@@ -1,5 +1,7 @@
 "use client";
 
+import ContentImage from "@/components/common/ContentImage";
+
 import React, { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -393,7 +395,7 @@ export default function SimpleMarkdownRenderer({
         );
       }
       return (
-        <img
+        <ContentImage
           src={src}
           alt={alt || ""}
           loading="lazy"

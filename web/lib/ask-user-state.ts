@@ -155,6 +155,19 @@ export function pendingAskUserKeyInMessages(
     .filter((keys) => keys.length > 0));
 }
 
+/** Bind a reply to the active same-turn question, including after reconnect. */
+export function pendingAskUserToolCallIdInMessages(
+  messages: MessageWithEvents[],
+  turnId?: string | null,
+): string | undefined {
+  for (const message of [...messages].reverse()) {
+    for (const key of pendingCards(message.events, turnId, false)) {
+      if (key.startsWith("id:")) return key.slice(3);
+    }
+  }
+  return undefined;
+}
+
 /**
  * Returns true when *any* card is still waiting on the user — a paused
  * `ask_user` or a mastery question that ended its turn.

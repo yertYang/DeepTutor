@@ -75,9 +75,6 @@ export interface SourceChildren {
   error: string
 }
 
-/** @deprecated Kept as the old name for {@link SourceChildren}. */
-export type KnowledgeBaseFiles = SourceChildren
-
 const EMPTY_LIBRARY: SourceLibrary = {
   books: [],
   notebooks: [],

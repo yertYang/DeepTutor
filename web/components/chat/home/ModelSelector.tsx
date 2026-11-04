@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AlertCircle, Bot, Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLingerExpand } from "@/hooks/use-linger-expand";
@@ -136,6 +136,7 @@ export default function ModelSelector({
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
   const {
     expanded,
@@ -181,7 +182,7 @@ export default function ModelSelector({
     placement === "bottom" ? "top-full mt-1.5" : "bottom-full mb-1.5";
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative" data-composer-model-selector={pinned || undefined}>
       {/* The model name shares the composer selectors' spring and hover delay. */}
       <Tooltip label={canRefresh ? t("Refresh models") : label} suppressed={open} side="top">
         <button
@@ -212,7 +213,7 @@ export default function ModelSelector({
             <ProviderIcon provider={selectedOption?.provider} size={16} />
           )}
           <ToolbarLabel expanded={expanded} fullWidth>
-            <span className="min-w-0">{label}</span>
+            <span className="max-w-[105px] truncate sm:max-w-[180px]">{label}</span>
             <ChevronDown
               size={13}
               className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
@@ -230,6 +231,18 @@ export default function ModelSelector({
               {helperText}
             </div>
           ) : null}
+          {options.length > 6 && (
+            <div className="border-b border-[var(--border)]/50 p-2">
+              <input
+                type="search"
+                aria-label={t("Search available models")}
+                placeholder={t("Search available models")}
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs outline-none focus:border-[var(--primary)]"
+              />
+            </div>
+          )}
           <div className="max-h-[280px] overflow-y-auto py-1">
             {allowSystemDefault && (
               <button
@@ -267,7 +280,7 @@ export default function ModelSelector({
                 )}
               </button>
             )}
-            {options.map((option) => {
+            {options.filter(option => `${option.model} ${option.model_name} ${option.profile_name} ${providerLabel(option)}`.toLowerCase().includes(query.toLowerCase())).map((option) => {
               const optionSelection = {
                 profile_id: option.profile_id,
                 model_id: option.model_id,
@@ -286,6 +299,9 @@ export default function ModelSelector({
                 />
               );
             })}
+            {query && !options.some(option => `${option.model} ${option.model_name} ${option.profile_name} ${providerLabel(option)}`.toLowerCase().includes(query.toLowerCase())) && (
+              <p className="px-3 py-3 text-xs text-[var(--muted-foreground)]">{t("No matching models")}</p>
+            )}
           </div>
         </div>
       )}

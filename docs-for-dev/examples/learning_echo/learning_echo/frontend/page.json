@@ -1,5 +1,0 @@
-{
-  "schema_version": "deeptutor.plugin-frontend-page/v1",
-  "entry": "frontend/index.html",
-  "assets": ["frontend/app.js", "frontend/index.html"]
-}

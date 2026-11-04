@@ -1,0 +1,83 @@
+{
+  "families": [
+    {
+      "family": "geist",
+      "source": "https://fonts.google.com/specimen/Geist",
+      "license": "SIL Open Font License 1.1",
+      "files": [
+        {
+          "file": "geist-100.ttf",
+          "weight": 100,
+          "sha256": "fba01e51977c6a3807dc36e4322022c3aa3d6c06679f7954040aad50065dbf42"
+        },
+        {
+          "file": "geist-200.ttf",
+          "weight": 200,
+          "sha256": "2b9d31bde3a8d7f4badaba569073fd92b0a173bb760bdf0299b4eec8ffedb178"
+        },
+        {
+          "file": "geist-300.ttf",
+          "weight": 300,
+          "sha256": "dfd8bfa490bf2100bf3ef27aabffdf341d2d2c6f3d91af120eb525542756e842"
+        },
+        {
+          "file": "geist-400.ttf",
+          "weight": 400,
+          "sha256": "ccce59465ae5c61930ada5453834f60500fbd95084d85db63e0e65fad0125455"
+        },
+        {
+          "file": "geist-500.ttf",
+          "weight": 500,
+          "sha256": "a8eefb873ba9c9020665f8a98302697ce1f3b79ab2deef6ee508c0ca6a82e876"
+        },
+        {
+          "file": "geist-600.ttf",
+          "weight": 600,
+          "sha256": "7171f481b121803d007f5c6c76cd9988c0d41cce4202db9a18dff9945505d36d"
+        },
+        {
+          "file": "geist-700.ttf",
+          "weight": 700,
+          "sha256": "1a9874b3be0fc168692a3d2327bccb4d28835653d3b91537a755296a467a83e3"
+        },
+        {
+          "file": "geist-800.ttf",
+          "weight": 800,
+          "sha256": "df308f3bd7ea958eab3ced869c429181e2c549d9f3b883776458d039d944f293"
+        },
+        {
+          "file": "geist-900.ttf",
+          "weight": 900,
+          "sha256": "33eafb809140b258737f1163b649580d4ebc3c17231d6ec409288192747c0be8"
+        }
+      ]
+    },
+    {
+      "family": "lora",
+      "source": "https://fonts.google.com/specimen/Lora",
+      "license": "SIL Open Font License 1.1",
+      "files": [
+        {
+          "file": "lora-400.ttf",
+          "weight": 400,
+          "sha256": "1d37d1e34c77be80f0119754ad78df9aad30d5b1c78132a4cbdac0fe567f5d4f"
+        },
+        {
+          "file": "lora-500.ttf",
+          "weight": 500,
+          "sha256": "9bfe70fd1d70600c523d7ef66c8a024187270f115570d82baf97df7f05e6c2aa"
+        },
+        {
+          "file": "lora-600.ttf",
+          "weight": 600,
+          "sha256": "36120862013ba0d8059ee03b3f6155d6420cabbf0743ccf5542f22ef918c20a2"
+        },
+        {
+          "file": "lora-700.ttf",
+          "weight": 700,
+          "sha256": "ac3145cd8846b6ab3522ac0579a4f5378271f6a93896cb800d27f301fa9f7758"
+        }
+      ]
+    }
+  ]
+}

@@ -117,6 +117,7 @@ export function RegistryProbe({
   listing = false,
   hints = [],
   showCapabilities = true,
+  autoDiscover = false,
 }: {
   input: ProviderProbeInput;
   discovery?: Discovery;
@@ -124,6 +125,7 @@ export function RegistryProbe({
   listing?: boolean;
   hints?: string[];
   showCapabilities?: boolean;
+  autoDiscover?: boolean;
 }) {
   // Credentials are only an in-memory request signature, never rendered or persisted.
   return (
@@ -135,6 +137,7 @@ export function RegistryProbe({
       listing={listing}
       hints={hints}
       showCapabilities={showCapabilities}
+      autoDiscover={autoDiscover}
     />
   );
 }
@@ -145,6 +148,7 @@ function ProbeForm({
   listing,
   hints,
   showCapabilities,
+  autoDiscover,
 }: {
   input: ProviderProbeInput;
   discovery?: Discovery;
@@ -152,6 +156,7 @@ function ProbeForm({
   listing: boolean;
   hints: string[];
   showCapabilities: boolean;
+  autoDiscover: boolean;
 }) {
   const { t } = useTranslation();
   const [result, setResult] = useState(discovery);
@@ -189,6 +194,15 @@ function ProbeForm({
       if (controller.current === request) setPending(false);
     }
   };
+  // This form remounts when credentials/endpoint change, and cleanup aborts the
+  // old request. Debounce typing so partial keys do not trigger a request each keypress.
+  const probeRef = useRef(probe);
+  probeRef.current = probe;
+  useEffect(() => {
+    if (!autoDiscover) return;
+    const timer = setTimeout(() => void probeRef.current(), 800);
+    return () => clearTimeout(timer);
+  }, [autoDiscover]);
   return (
     <section className={`space-y-3 p-4 ${subPanelClass}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">

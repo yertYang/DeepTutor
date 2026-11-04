@@ -62,6 +62,7 @@ import ComposerResources, {
 } from "./ComposerResources";
 import KnowledgeSelector from "./KnowledgeSelector";
 import ModelSelector from "./ModelSelector";
+import ReasoningSelector from "./ReasoningSelector";
 import styles from "./ChatComposer.module.css";
 import { ComposerTray, type TrayCreate, type TrayMode } from "./ComposerTray";
 import type { AnswerModeProps, PartnerLinkProps } from "./AnswerModeMenu";
@@ -1560,6 +1561,14 @@ export default memo(function ChatComposer({
                   error={llmOptionsError}
                   onChange={onSelectLLM}
                   onRefresh={onRefreshLLMOptions}
+                  pinned
+                />
+                <ReasoningSelector
+                  options={llmOptions}
+                  activeDefault={activeLLMDefault}
+                  value={llmSelection}
+                  disabled={llmOptionsLoading || llmOptionsError}
+                  onChange={onSelectLLM}
                 />
 
                 {contextBudget ? <ContextBudgetChip budget={contextBudget} /> : null}

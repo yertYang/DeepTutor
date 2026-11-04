@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleSlash,
-  Copy,
   Database,
   ExternalLink,
   KeyRound,
@@ -52,7 +51,6 @@ import {
   type RagProviderSummary,
 } from "@/features/knowledge/api/engines";
 import { canApplyGraphRagModelCandidate } from "@/lib/graphrag-model-compatibility";
-import { copyText } from "@/lib/clipboard";
 import {
   kbDocCount,
   kbProvider,
@@ -82,11 +80,6 @@ export interface EngineDetailProps {
   onChanged: () => void;
   onError: (message: string) => void;
 }
-
-const INSTALL_HINTS: Record<string, string> = {
-  graphrag: "pip install 'deeptutor[graphrag]'",
-  lightrag: "pip install 'deeptutor[rag-lightrag]'",
-};
 
 // Mode one-liners, keyed by `${engineId}:${mode}`. English source strings double
 // as i18n keys (zh translations live in locales/zh/app.json).
@@ -209,44 +202,6 @@ function Section({
       </h2>
       {children}
     </section>
-  );
-}
-
-function CopyableCommand({ command }: { command: string }) {
-  const { t } = useTranslation();
-  const [outcome, setOutcome] = useState<"idle" | "copied" | "failed">("idle");
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 px-3 py-2">
-      <code className="truncate font-mono text-[12px] text-[var(--foreground)]">
-        {command}
-      </code>
-      <button
-        type="button"
-        onClick={() => {
-          // The write is awaited before the label changes. This used to be
-          // `void navigator.clipboard?.writeText(...)` followed by an
-          // unconditional `setCopied(true)` — where the `?.` meant a missing
-          // Clipboard API did not even throw, and the label said 已复制 anyway.
-          void copyText(command).then(
-            () => setOutcome("copied"),
-            () => setOutcome("failed"),
-          );
-          window.setTimeout(() => setOutcome("idle"), 1500);
-        }}
-        className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
-      >
-        {outcome === "copied" ? (
-          <Check className="h-3 w-3" />
-        ) : (
-          <Copy className="h-3 w-3" />
-        )}
-        {outcome === "copied"
-          ? t("Copied")
-          : outcome === "failed"
-            ? t("Could not copy")
-            : t("Copy")}
-      </button>
-    </div>
   );
 }
 
@@ -1752,12 +1707,10 @@ function CheckRow({
 
 function EnvRequirements({
   providerId,
-  installHint,
   defaultOpen,
   onError,
 }: {
   providerId: string;
-  installHint?: string;
   defaultOpen: boolean;
   onError: (message: string) => void;
 }) {
@@ -1803,7 +1756,6 @@ function EnvRequirements({
               {t(prereq)}
             </p>
           )}
-          {installHint && <CopyableCommand command={installHint} />}
           <div className="flex items-center gap-2.5">
             <button
               type="button"
@@ -1862,7 +1814,6 @@ export default function EngineDetail({
 }: EngineDetailProps) {
   const { t } = useTranslation();
   const status = providerConnectionStatus(provider);
-  const installHint = INSTALL_HINTS[provider.id];
   const hasModes = (provider.modes?.length ?? 0) > 0;
 
   const engineKbs = useMemo(
@@ -1906,7 +1857,6 @@ export default function EngineDetail({
             Auto-opens when the engine isn't ready so the gap is obvious. */}
         <EnvRequirements
           providerId={provider.id}
-          installHint={installHint}
           defaultOpen={status !== "ready"}
           onError={onError}
         />

@@ -1,0 +1,3 @@
+The user selected Ask Questions for this turn. Begin this selected turn by calling ask_user once, with no answer, preamble or narration before the card. The selected turn may occur later in a conversation.
+Use the available conversation, current request and previous questions and answers to ask about the most valuable remaining goal, constraint, difficulty or preference. Never repeat an already answered question. Bundle 1-4 specific questions in one call. Use meaningful choices when useful, and allow free text.
+After the user answers, continue and complete the original request in the same turn. Ask again only when the new context exposes another material information gap.

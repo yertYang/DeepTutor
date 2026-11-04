@@ -3085,19 +3085,7 @@ export interface paths {
     readonly put?: never;
     /**
      * Delete Knowledge Base By Name
-     * @description Delete a knowledge base named in the body rather than in the path.
-     *
-     *     The path route below cannot reach every registered name. A name is a
-     *     ``kb_config.json`` key, and until the ``register_*`` methods validated it
-     *     the connect-* endpoints wrote whatever the user typed — including a ``/``.
-     *     uvicorn percent-decodes the path before routing, so ``%2F`` becomes a real
-     *     separator and ``{kb_name}`` (compiled to ``[^/]+``) cannot span it: every
-     *     per-KB route 404s and the KB is visible in the list but unreachable.
-     *
-     *     A body is never split into path segments, so this reaches those entries.
-     *     Widening the path route to ``{kb_name:path}`` would not do — it is
-     *     declared ahead of the DELETE routes for linked folders, GitHub sources and
-     *     web sources, and a greedy converter would silently swallow all three.
+     * @description Delete a knowledge base identified in the request body, avoiding ambiguous encoded path separators.
      */
     readonly post: operations["delete_knowledge_base_by_name_api_knowledge_bases_delete_post"];
     readonly delete?: never;
@@ -3512,11 +3500,8 @@ export interface paths {
     };
     /**
      * Get Llamaindex Pipeline Config
-     * @description Read the LlamaIndex engine's retrieval + chunking knobs.
-     *
-     *     ``retrieval_profile`` is what is *configured*; ``effective_retrieval_profile``
-     *     is what would actually run — a hybrid configuration degrades to vector-only
-     *     when the BM25 package is missing (e.g. Python 3.14 installs, #1792).
+     * @deprecated
+     * @description Historical vector-engine retrieval settings. This engine is not implemented by the native runtime.
      */
     readonly get: operations["get_llamaindex_pipeline_config_api_knowledge_bases_rag_pipelines_llamaindex_config_get"];
     /**
@@ -8577,12 +8562,8 @@ export interface paths {
     readonly put?: never;
     /**
      * Start Document Parsing Model Download
-     * @description Kick off a one-click model-weight download for an engine (e.g. Docling).
-     *
-     *     Runs the engine's downloader console script (``docling-tools models
-     *     download``) as a background subprocess; progress is polled via the shared job
-     *     status endpoint. The engine must be in ``ENGINE_MODEL_DOWNLOADERS`` and its
-     *     script reachable next to the server's python or on PATH.
+     * @deprecated
+     * @description Historical parser model-download request. Unsupported by the native runtime.
      */
     readonly post: operations["start_document_parsing_model_download_api_settings_document_parsing_models_download_post"];
     readonly delete?: never;
@@ -13709,7 +13690,8 @@ export interface components {
     };
     /**
      * DocumentParsingInstall
-     * @description One-click pip install of an optional parser engine's package(s).
+     * @deprecated
+     * @description Historical parser installation request. Unsupported by the native runtime.
      */
     readonly DocumentParsingInstall: {
       /** Engine */
@@ -14901,6 +14883,22 @@ export interface components {
       readonly model_id: string;
       /** Profile Id */
       readonly profile_id: string;
+      /**
+       * Reasoning Effort
+       * @default null
+       */
+      readonly reasoning_effort:
+        | (
+            | "none"
+            | "minimal"
+            | "low"
+            | "medium"
+            | "high"
+            | "xhigh"
+            | "max"
+            | "adaptive"
+          )
+        | null;
     };
     /**
      * LoginRequest

@@ -1,5 +1,7 @@
 'use client'
 
+import { BRAND_ASSETS, BRAND_DIMENSIONS } from "@/lib/product";
+
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import {
@@ -71,7 +73,7 @@ export default function NoteBlockPreview({
   )
   const image = (
     <div className="dt-note-preview-image">
-      <Image src="/brand/color-full.png" alt="" width={1600} height={313} unoptimized />
+      <Image src={BRAND_ASSETS.full} alt="" {...BRAND_DIMENSIONS.full} unoptimized />
       <small>{t('Image caption')}</small>
     </div>
   )

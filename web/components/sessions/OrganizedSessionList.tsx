@@ -226,7 +226,6 @@ export default function OrganizedSessionList({
   useEffect(() => {
     const stored = new Set(readCollapsedGroups());
     collapsedRef.current = stored;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCollapsedGroups(stored);
   }, []);
 

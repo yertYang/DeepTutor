@@ -219,7 +219,7 @@ export default function UsageSettingsSection() {
             {historical.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted-foreground)]">
                 <span>{t('Historical usage without recoverable model details')}</span>
-                <span className="tabular-nums">{n(historical.reduce((sum, model) => sum + model.total_tokens, 0))} tokens</span>
+                <span className="tabular-nums">{n(historical.reduce((sum, model) => sum + model.total_tokens, 0))} {t('tokens')}</span>
               </div>
             )}
           </section>

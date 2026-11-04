@@ -73,6 +73,10 @@ async function request<T>(path: string, body?: object): Promise<T> {
 
 export default function DataMigrationSettingsSection() {
   const { i18n } = useTranslation()
+  const sizeFormat = new Intl.NumberFormat(i18n.resolvedLanguage || i18n.language, {
+    style: 'unit', unit: 'megabyte', unitDisplay: 'short',
+    minimumFractionDigits: 1, maximumFractionDigits: 1,
+  })
   const zh = i18n.language.startsWith('zh')
   const text = (en: string, cn: string) => (zh ? cn : en)
   const { workspaces } = useChatWorkspaces()
@@ -257,8 +261,7 @@ export default function DataMigrationSettingsSection() {
                     {row.sessions !== undefined
                       ? `${row.sessions} ${text('conversations', '个对话')} · `
                       : ''}
-                    {row.files} {text('files', '个文件')} · {(row.bytes / 1024 / 1024).toFixed(1)}{' '}
-                    MB
+                    {row.files} {text('files', '个文件')} · {sizeFormat.format(row.bytes / 1024 / 1024)}
                   </span>
                   <span className="mt-1 block break-all text-[11px] text-[var(--muted-foreground)]">
                     {row.error || row.path}
@@ -316,7 +319,7 @@ export default function DataMigrationSettingsSection() {
           <div className="space-y-3 rounded-xl border border-[var(--border)] p-4">
             <p className="text-sm">
               {preview.sessions} {text('conversations', '个对话')} · {preview.files}{' '}
-              {text('files', '个文件')} · {(preview.bytes / 1024 / 1024).toFixed(1)} MB
+              {text('files', '个文件')} · {sizeFormat.format(preview.bytes / 1024 / 1024)}
             </p>
             <p className="text-sm">
               {text('Included features', '包含功能')}: {preview.features.map(label).join('、')}

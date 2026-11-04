@@ -23,14 +23,13 @@ import {
   SquareTerminal,
 } from "lucide-react";
 
-/** Binary Office formats — handled by dedicated parsers server-side. */
+/** Legacy binary document choices; native backend parser support is still gated. */
 export const OFFICE_EXTS = [".pdf", ".docx", ".xlsx", ".pptx"] as const;
 
 /**
- * Text-like formats — decoded server-side with multi-encoding fallback.
- * Mirrors `FileTypeRouter.TEXT_EXTENSIONS` in the Python codebase. Adding
- * a new extension here without also adding it to the backend will cause
- * the upload to be silently dropped.
+ * Text-like choices retained for legacy attachment display and selection.
+ * The backend validates accepted formats; this list does not declare native
+ * parser support for every extension.
  */
 export const TEXT_LIKE_EXTS = [
   // Plain text & markup

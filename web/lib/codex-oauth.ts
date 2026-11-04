@@ -149,7 +149,7 @@ export async function requestCodex<T>(
     } catch {
       throw new CodexOAuthApiError(
         "invalid_response",
-        "DeepTutor returned an invalid Codex OAuth response.",
+        "Lorevia returned an invalid Codex OAuth response.",
       );
     }
   }
@@ -158,10 +158,14 @@ export async function requestCodex<T>(
   let message = "Codex request failed.";
   try {
     const payload = (await response.json()) as {
-      detail?: { code?: string; message?: string };
+      detail?: { code?: string; message?: string } | string;
+      error_code?: string;
+      message?: string;
     };
-    if (payload.detail?.code) code = payload.detail.code;
-    if (payload.detail?.message) message = payload.detail.message;
+    if (payload.error_code) code = payload.error_code;
+    if (typeof payload.detail === "object" && payload.detail?.code) code = payload.detail.code;
+    if (typeof payload.detail === "object" && payload.detail?.message) message = payload.detail.message;
+    else if (payload.message) message = payload.message;
   } catch {
     // The UI renders only the stable code mapping below.
   }

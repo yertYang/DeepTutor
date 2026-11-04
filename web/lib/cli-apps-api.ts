@@ -1,12 +1,12 @@
 import { apiFetch, apiUrl } from "@/lib/api";
 
-/** Mirrors `deeptutor/api/routers/space_cli_apps.py`. */
+/** Reserved CLI-app API contract; execution support is gated by the native server. */
 export const CLI_APPS_BASE_PATH = "/api/space/cli-apps";
 
 /** Where the code comes from — the only honest input to "should I install this?". */
 export type CliAppTrust = "first-party" | "third-party";
 
-export type CliAppRuntime = "python" | "node" | "none";
+export type CliAppRuntime = "native" | "node" | "none";
 
 /** One installed app, as the calling account sees it. */
 export interface CliApp {
@@ -130,6 +130,10 @@ function str(value: unknown, fallback = ""): string {
   return value === undefined || value === null ? fallback : String(value);
 }
 
+function supportedRuntime(value: unknown): CliAppRuntime | null {
+  return value === "native" || value === "node" || value === "none" ? value : null;
+}
+
 function normalizeApp(raw: unknown): CliApp {
   const item = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -139,13 +143,13 @@ function normalizeApp(raw: unknown): CliApp {
     category: str(item.category),
     tool_name: str(item.tool_name),
     entry_point: str(item.entry_point),
-    runtime: (str(item.runtime, "python") as CliAppRuntime) ?? "python",
+    runtime: supportedRuntime(item.runtime) ?? "none",
     installed_at: str(item.installed_at),
     version: str(item.version),
     pin: str(item.pin),
     trust: (str(item.trust, "third-party") as CliAppTrust) ?? "third-party",
     granted: Boolean(item.granted),
-    enabled: Boolean(item.enabled),
+    enabled: supportedRuntime(item.runtime) !== null && Boolean(item.enabled),
     // Absent field reads as "still catalogued": treating it as withdrawn would
     // hide a working app behind a warning.
     in_catalog: item.in_catalog === undefined ? true : Boolean(item.in_catalog),
@@ -179,12 +183,12 @@ function normalizeEntry(raw: unknown): CliCatalogEntry {
     homepage: str(item.homepage),
     source_url: str(item.source_url),
     entry_point: str(item.entry_point),
-    runtime: (str(item.runtime, "python") as CliAppRuntime) ?? "python",
+    runtime: supportedRuntime(item.runtime) ?? "none",
     install_kind: str(item.install_kind),
     install_target: str(item.install_target),
-    installable: Boolean(item.installable),
+    installable: supportedRuntime(item.runtime) !== null && Boolean(item.installable),
     pinned: Boolean(item.pinned),
-    unsupported_reason: str(item.unsupported_reason),
+    unsupported_reason: supportedRuntime(item.runtime) === null ? "Unsupported CLI runtime." : str(item.unsupported_reason),
     install_notes: str(item.install_notes),
     installed: Boolean(item.installed),
   };

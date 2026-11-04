@@ -11,6 +11,9 @@ import {
 import { RegistryField, RegistryModelIdField } from './RegistryControls'
 import { inputClass } from './shared'
 
+// Provider resource identifiers are literal API values.
+const SPEECH_RESOURCE_EXAMPLE = "volc.bigasr.auc_turbo"
+
 export function VoiceModelFields({
   service,
   provider,
@@ -120,7 +123,7 @@ export function VoiceModelFields({
             label={t('Speech resource ID')}
             value={model.resource_id ?? ''}
             disabled={disabled}
-            placeholder="volc.bigasr.auc_turbo"
+            placeholder={SPEECH_RESOURCE_EXAMPLE}
             onChange={v => update('resource_id', v)}
           />
         )}

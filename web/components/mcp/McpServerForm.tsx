@@ -24,6 +24,14 @@ import {
 } from "@/lib/mcp-api";
 import { describeMcpError } from "@/lib/mcp-store";
 
+// Executable examples must stay valid across interface languages.
+const SERVER_EXAMPLES = {
+  name: "my-server",
+  command: "npx",
+  cwd: "/path/to/workdir",
+  url: "https://example.com/mcp",
+};
+
 export default function McpServerForm({
   surface,
   originalName,
@@ -193,7 +201,7 @@ export default function McpServerForm({
             className={inputClass}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="my-server"
+            placeholder={SERVER_EXAMPLES.name}
             spellCheck={false}
             autoComplete="off"
           />
@@ -231,7 +239,7 @@ export default function McpServerForm({
               className={`${inputClass} font-mono`}
               value={command}
               onChange={(e) => setCommand(e.target.value)}
-              placeholder="npx"
+              placeholder={SERVER_EXAMPLES.command}
               spellCheck={false}
               autoComplete="off"
             />
@@ -256,7 +264,7 @@ export default function McpServerForm({
               className={`${inputClass} font-mono`}
               value={cwd}
               onChange={(e) => setCwd(e.target.value)}
-              placeholder="/path/to/workdir"
+              placeholder={SERVER_EXAMPLES.cwd}
               spellCheck={false}
               autoComplete="off"
             />
@@ -282,7 +290,7 @@ export default function McpServerForm({
               className={`${inputClass} font-mono`}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com/mcp"
+              placeholder={SERVER_EXAMPLES.url}
               spellCheck={false}
               autoComplete="off"
             />

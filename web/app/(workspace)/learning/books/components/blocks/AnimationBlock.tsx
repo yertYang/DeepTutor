@@ -1,5 +1,7 @@
 "use client";
 
+import ContentImage from "@/components/common/ContentImage";
+
 import { Download, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -63,7 +65,7 @@ export default function AnimationBlock({ block }: AnimationBlockProps) {
             className="aspect-video h-auto w-full object-contain"
           />
         ) : (
-          <img
+          <ContentImage
             src={primary}
             alt={description || t("Animation frame")}
             className="h-auto w-full"

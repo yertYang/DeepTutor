@@ -12,6 +12,9 @@ import { useTranslation } from "react-i18next";
 import { Eye, PencilLine } from "lucide-react";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 
+// The configuration file name is part of the partner format.
+const SOUL_FILENAME = "SOUL.md";
+
 type Mode = "edit" | "preview";
 
 export default function SoulEditor({
@@ -37,7 +40,7 @@ export default function SoulEditor({
     <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background)] transition-colors focus-within:border-[var(--ring)]">
       <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--muted)]/40 py-1.5 pl-4 pr-1.5">
         <span className="font-mono text-[11px] tracking-wide text-[var(--muted-foreground)]">
-          SOUL.md
+          {SOUL_FILENAME}
         </span>
         <div className="relative grid grid-cols-2 rounded-lg bg-[var(--muted)] p-0.5">
           <span

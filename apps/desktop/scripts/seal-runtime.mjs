@@ -1,5 +1,5 @@
 import { createPrivateKey, generateKeyPairSync, sign } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile, access } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile, access, rename } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { canonicalManifest, sha256 } from '../src/bundles.mjs';
@@ -7,6 +7,7 @@ import { systemTar } from '../src/platform.mjs';
 import { appRoot, loadTarget } from './lib/target.mjs';
 import { assertSigningKey } from './lib/signing.mjs';
 import { signMacRuntime } from './lib/macos-runtime-signing.mjs';
+import { refreshNativeManifest } from './lib/native-manifest.mjs';
 
 // One signing identity covers every platform; the manifest binds platform and architecture.
 const target = await loadTarget();
@@ -29,19 +30,27 @@ catch {
 }
 const privateKey = createPrivateKey(await readFile(keyFile));
 assertSigningKey(privateKey, await readFile(publicKeyFile));
-const coreVersion = /__version__\s*=\s*['"]([^'"]+)/.exec(await readFile(path.join(target.runtime, 'core/deeptutor/__version__.py'), 'utf8'))[1];
+const coreVersion = (await readFile(path.join(target.runtime, 'core/VERSION'), 'utf8')).trim();
+if (!/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(coreVersion)) throw new Error('Invalid runtime VERSION');
 const commit = (await readFile(path.join(target.runtime, 'BUILD_COMMIT'), 'utf8')).trim();
-const runtimeId = `${coreVersion}-${commit.slice(0, 9)}-${target.arch}`;
-const archive = `open-deeptutor-core-${runtimeId}.tar.gz`;
 // Sign native code before computing the archive hash and Ed25519 signature.
 if (target.platform === 'darwin') {
   await signMacRuntime(target.runtime, process.env.APPLE_SIGNING_IDENTITY,
     path.join(appRoot, 'assets/entitlements.runtime.mac.plist'));
 }
-execFileSync(systemTar(), ['-czf', path.join(target.seed, archive), '-C', target.runtime, '.'], { stdio: 'inherit', env: { ...process.env, COPYFILE_DISABLE: '1' } });
+await refreshNativeManifest(target.runtime);
+const stagingArchive = path.join(target.seed, 'core-staging.tar.gz');
+execFileSync(systemTar(), ['-czf', stagingArchive, '-C', target.runtime, '.'], { stdio: 'inherit', env: { ...process.env, COPYFILE_DISABLE: '1' } });
+const archiveHash = await sha256(stagingArchive);
+const buildInfo = JSON.parse(await readFile(path.join(target.runtime, 'BUILD_INFO.json'), 'utf8'));
+// Two local builds from the same HEAD may contain different uncommitted work.
+const localSuffix = buildInfo.source?.mode === 'working-tree' ? `-local-${archiveHash.slice(0, 12)}` : '';
+const runtimeId = `${coreVersion}-${commit.slice(0, 9)}-${target.arch}${localSuffix}`;
+const archive = `open-deeptutor-core-${runtimeId}.tar.gz`;
+await rename(stagingArchive, path.join(target.seed, archive));
 const manifest = {
   formatVersion: 1, protocolVersion: 1, platform: target.platform, arch: target.arch,
-  runtimeId, coreVersion, commit, archive, sha256: await sha256(path.join(target.seed, archive)),
+  runtimeId, coreVersion, commit, archive, sha256: archiveHash,
 };
 manifest.signature = sign(null, Buffer.from(canonicalManifest(manifest)), privateKey).toString('base64');
 await writeFile(path.join(target.seed, 'runtime.json'), JSON.stringify(manifest, null, 2) + '\n');

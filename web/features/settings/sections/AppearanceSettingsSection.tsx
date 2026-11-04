@@ -23,6 +23,12 @@ import {
   selectOptionClass,
 } from "@/components/settings/shared";
 
+// Keep both scripts visible when comparing typography, regardless of UI language.
+const TYPOGRAPHY_SAMPLES = {
+  en: "Learning starts with a question. Explore an idea, connect it to what you know, and explain it in your own words.",
+  zh: "学习从一个问题开始。探索新的想法，将它与已有的知识联系起来，再用自己的语言解释。",
+};
+
 const CODE_BLOCK_PREVIEW_SNIPPET = `def fibonacci(n):
     """Generate the first n Fibonacci numbers."""
     a, b = 0, 1
@@ -193,11 +199,10 @@ export default function AppearanceSettingsPage() {
             }
           >
             <p lang="en">
-              Learning starts with a question. Explore an idea, connect it to
-              what you know, and explain it in your own words.
+              {TYPOGRAPHY_SAMPLES.en}
             </p>
             <p lang="zh">
-              学习从一个问题开始。探索新的想法，将它与已有的知识联系起来，再用自己的语言解释。
+              {TYPOGRAPHY_SAMPLES.zh}
             </p>
           </div>
           <button

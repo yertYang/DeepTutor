@@ -197,6 +197,7 @@ const MODE_BADGE_LABELS: Record<string, string> = {
   chat: "Chat",
   ask_questions: "Ask Questions",
   deep_solve: "Deep Solve",
+  test_cases: "Write Test Cases",
   deep_question: "Quiz Generation",
   deep_research: "Deep Research",
   math_animator: "Math Animator",

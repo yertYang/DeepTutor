@@ -1,0 +1,37 @@
+[package]
+name = "deeptutor-server"
+default-run = "deeptutor-server"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Independent Lorevia Rust application service and HTTP/WebSocket server"
+
+[dependencies]
+axum = { version = "0.8", features = ["ws", "multipart"] }
+base64 = "0.22"
+clap = { version = "4", features = ["derive", "env"] }
+deeptutor-codex = { path = "../codex" }
+fs2 = "0.4"
+pdf-extract = "=0.9.0"
+quick-xml = "=0.38.3"
+zip = { version = "=4.6.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+futures-util.workspace = true
+reqwest.workspace = true
+rusqlite = { version = "0.41.1", features = ["bundled"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
+subtle = "2"
+tempfile = "3"
+thiserror.workspace = true
+tokio = { workspace = true, features = ["signal", "process"] }
+uuid.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "=0.6.4"
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSArray", "NSDictionary", "NSData", "NSError", "NSString", "NSObject", "NSEnumerator"] }
+objc2-vision = { version = "=0.3.2", default-features = false, features = ["std", "VNRequest", "VNRecognizeTextRequest", "VNRequestHandler", "VNObservation", "VNTypes", "objc2-core-graphics"] }
+objc2-core-foundation = { version = "=0.3.2", default-features = false, features = ["std", "CFData"] }
+objc2-core-graphics = { version = "=0.3.2", default-features = false, features = ["std", "CGDataProvider", "CGPDFDocument", "CGPDFPage", "CGBitmapContext", "CGContext", "CGColorSpace", "CGImage", "CGGeometry", "CGAffineTransform"] }
+imagesize = "=0.14.0"

@@ -146,9 +146,8 @@ export async function login(
 }
 
 /**
- * Normalise a FastAPI error detail to a plain string.
- * FastAPI can return detail as a string (HTTPException) or as an array of
- * validation error objects (422 Unprocessable Entity).
+ * Normalise an API error detail to a plain string.
+ * Accept both string details and legacy validation error arrays.
  */
 function extractDetail(detail: unknown): string {
   if (typeof detail === "string") return detail;

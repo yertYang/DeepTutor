@@ -1,5 +1,8 @@
 "use client";
 
+import { BRAND_ASSETS, BRAND_DIMENSIONS, PRODUCT_NAME } from "@/lib/product";
+import Image from "next/image";
+
 import { Suspense, useCallback, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -68,8 +71,9 @@ function LoginPageContent() {
     <div className="w-full max-w-sm">
       {/* Logo / Title */}
       <div className="text-center mb-8">
-        <h1 className="font-serif text-2xl font-semibold text-[var(--foreground)] tracking-tight">
-          DeepTutor
+        <h1 className="flex items-center justify-center gap-2.5" aria-label={PRODUCT_NAME}>
+          <Image src={BRAND_ASSETS.logo} alt="" width={40} height={40} priority />
+          <Image src={BRAND_ASSETS.monoWordmark} alt={PRODUCT_NAME} {...BRAND_DIMENSIONS.monoWordmark} className="h-8 w-auto dark:invert" priority />
         </h1>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           {t("Sign in to your account")}
@@ -106,7 +110,7 @@ function LoginPageContent() {
                          placeholder:text-[var(--muted-foreground)]
                          focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent
                          transition-shadow text-sm"
-              placeholder="you@example.com"
+              placeholder={t("Username")}
             />
           </div>
 

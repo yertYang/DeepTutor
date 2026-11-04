@@ -41,5 +41,24 @@ export async function signMacRuntime(root, identity, entitlements) {
     ], { stdio: 'inherit' });
     execFileSync('/usr/bin/codesign', ['--verify', '--strict', file], { stdio: 'inherit' });
   }
+  // Chromium contains nested helper apps and frameworks. Seal those bundles
+  // inside out after their Mach-O members, before sealing the enclosing app.
+  async function bundles(folder) {
+    const found = [];
+    for (const entry of await readdir(folder, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const file = path.join(folder, entry.name);
+      found.push(...await bundles(file));
+      if (/\.(app|framework)$/.test(entry.name)) found.push(file);
+    }
+    return found;
+  }
+  for (const bundle of await bundles(root)) {
+    execFileSync('/usr/bin/codesign', [
+      '--force', '--sign', identity, '--timestamp', '--options', 'runtime',
+      ...(bundle.endsWith('.app') ? ['--entitlements', entitlements] : []), bundle,
+    ], { stdio: 'inherit' });
+    execFileSync('/usr/bin/codesign', ['--verify', '--strict', bundle], { stdio: 'inherit' });
+  }
   console.log(`Developer ID signed and verified ${binaries.length} runtime binaries`);
 }

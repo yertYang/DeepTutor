@@ -7,6 +7,7 @@ import Tooltip from "@/shared/ui/Tooltip";
 
 import {
   fetchAppUpdateStatus,
+  AppUpdateUnavailableError,
   subscribeAppUpdateStatus,
   type AppUpdateStatus,
 } from "@/lib/app-update";
@@ -19,6 +20,7 @@ export function VersionBadge({ onNavigate }: VersionBadgeProps) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<AppUpdateStatus | null>(null);
   const [error, setError] = useState("");
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -26,11 +28,19 @@ export function VersionBadge({ onNavigate }: VersionBadgeProps) {
     const unsubscribe = subscribeAppUpdateStatus((signal) => {
       if (!active) return;
       if (signal.status) setStatus(signal.status);
+      if (signal.unavailable) setStatus(null);
       setError(signal.error);
+      setUnavailable(Boolean(signal.unavailable));
     });
 
     void fetchAppUpdateStatus(controller.signal).catch((cause) => {
       if (!active || controller.signal.aborted) return;
+      if (cause instanceof AppUpdateUnavailableError) {
+        setUnavailable(true);
+        setError("");
+        return;
+      }
+      setUnavailable(false);
       setError(
         cause instanceof Error ? cause.message : "Unable to check for updates",
       );
@@ -43,7 +53,9 @@ export function VersionBadge({ onNavigate }: VersionBadgeProps) {
     };
   }, []);
 
-  const state = error
+  const state = unavailable
+    ? { dot: "bg-[color-mix(in_srgb,var(--muted-foreground)_35%,transparent)]", label: t("Download desktop app") }
+    : error
     ? { dot: "bg-red-500", label: t("Status check failed") }
     : status?.update_available
       ? { dot: "bg-amber-500", label: t("Update available") }

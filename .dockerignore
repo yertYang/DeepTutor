@@ -11,17 +11,18 @@
 .git
 .gitignore
 .gitattributes
+target/
+native/
+apps/desktop/.local/
 
 # ============================================
 # Documentation
 # ============================================
 *.md
-!README.md
 docs/
 docs-for-dev/
 assets/gifs/
 assets/figs/
-assets/README/
 
 # ============================================
 # Python
@@ -150,5 +151,13 @@ temp/
 # ============================================
 # License and Communication
 # ============================================
-LICENSE
-Communication.md
+!LICENSE
+!THIRD_PARTY_NOTICES.txt
+
+# The native image must not include legacy Python sources or user homes.
+deeptutor/
+deeptutor_cli/
+deeptutor_web/
+requirements/
+packaging/
+native-home/

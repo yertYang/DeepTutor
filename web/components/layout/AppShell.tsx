@@ -1,5 +1,7 @@
 "use client";
 
+import { BRAND_ASSETS, BRAND_DIMENSIONS, PRODUCT_NAME } from "@/lib/product";
+
 import {
   createContext,
   useCallback,
@@ -117,18 +119,18 @@ export default function AppShell({ sidebar, pageBar, children, homeHref = "/" }:
             </button>
             <Link href={homeHref} className="flex items-center gap-1.5">
               <Image
-                src="/brand/color-logo.png"
-                alt="DeepTutor"
+                src={BRAND_ASSETS.logo}
+                alt={PRODUCT_NAME}
                 width={20}
                 height={20}
                 className="h-5 w-5"
               />
               <Image
-                src="/brand/color-word.png"
-                alt="DeepTutor"
-                width={1200}
-                height={310}
-                className="h-[18px] w-auto"
+                src={BRAND_ASSETS.monoWordmark}
+                alt={PRODUCT_NAME}
+                width={BRAND_DIMENSIONS.wordmark.width}
+                height={BRAND_DIMENSIONS.wordmark.height}
+                className="h-[18px] w-auto dark:invert"
               />
             </Link>
           </div>

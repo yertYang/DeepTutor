@@ -2,7 +2,9 @@
 
 set -eu
 
-# Keep this hook dependency-free so a fresh checkout can reject generated
-# files before contributors install the full pre-commit environment.
-python3 scripts/check_repo_hygiene.py
-python3 scripts/check_branch_policy.py
+branch="$(git branch --show-current)"
+allowance="$(git config --bool deeptutor.allowMainCommit || true)"
+if [ "$branch" = "main" ] && [ "$allowance" != "true" ]; then
+  echo "Direct commits to main are forbidden. Develop on dev or a topic branch, then integrate through review. For an explicit release exception, set deeptutor.allowMainCommit=true and unset it afterward." >&2
+  exit 1
+fi

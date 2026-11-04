@@ -30,7 +30,9 @@
 
 .actions {
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 100%;
+  flex-wrap: wrap;
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
@@ -40,6 +42,12 @@
 /* Animated selector names must not displace the microphone or send button. */
 .toolbar [data-toolbar-label] {
   display: none;
+}
+
+/* The selected model stays visible on phones as well as wide composers. */
+.toolbar [data-composer-model-selector] [data-toolbar-label] {
+  display: inline-flex;
+  max-width: 140px;
 }
 
 @container chat-composer (min-width: 600px) {

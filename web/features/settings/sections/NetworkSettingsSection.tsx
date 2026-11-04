@@ -295,7 +295,7 @@ export default function NetworkSettingsPage() {
           >
             <SettingRow
               title={t("Backend port")}
-              description={t("FastAPI listens on this port.")}
+              description={t("The Rust backend listens on this port.")}
               control={
                 <input
                   className={`${inputClass} w-28`}

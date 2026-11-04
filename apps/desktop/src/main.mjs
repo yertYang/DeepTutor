@@ -9,21 +9,23 @@ import { externalURL } from './config.mjs';
 import { resolveLanguage, translate } from './i18n.mjs';
 import { WINDOWS, agentMarker, edition, targetId } from './platform.mjs';
 import { killTree } from './processes.mjs';
+import { createUpgradeBackup, restoreUpgradeBackup } from './upgrade.mjs';
 
-app.setName('Open DeepTutor');
-if (WINDOWS) app.setAppUserModelId('org.deeptutor.open-desktop');
+app.setName('Lorevia');
+if (WINDOWS) app.setAppUserModelId('org.yanzhizhou.desktop');
 const EDITION = edition();
 const sourceDirectory = path.dirname(fileURLToPath(import.meta.url));
 const shellURL = pathToFileURL(path.join(sourceDirectory, 'index.html')).href;
 // Runtimes are large and machine-specific, so Windows keeps them out of the roaming profile.
-const userRoot = process.env.OPEN_DEEPTUTOR_TEST_HOME
+// Keep the established data directory when upgrading the renamed app.
+const userRoot = process.env.YANZHIZHOU_TEST_HOME || process.env.OPEN_DEEPTUTOR_TEST_HOME
   || path.join(WINDOWS ? process.env.LOCALAPPDATA ?? app.getPath('appData') : app.getPath('appData'), 'Open DeepTutor');
 app.setPath('userData', userRoot);
 const runtimeHome = path.join(userRoot, 'workspace');
 const logPath = path.join(userRoot, 'logs/runtime.log');
 const activeFile = path.join(userRoot, 'active.json');
 const transactionFile = path.join(userRoot, 'upgrade.json');
-// DeepTutor's own Settings page writes the interface language and theme here.
+// Lorevia's own Settings page writes the interface language and theme here.
 const interfaceFile = path.join(runtimeHome, 'data/user/settings/interface.json');
 const seed = app.isPackaged ? path.join(process.resourcesPath, 'seed/runtime.json') : path.join(sourceDirectory, '../.local', targetId(), 'seed/runtime.json');
 const publicKey = await readFile(path.join(sourceDirectory, '../assets/runtime-public.pem'), 'utf8');
@@ -206,9 +208,16 @@ async function recoverInterruptedUpgrade() {
   if (!transaction || transaction.phase !== 'testing') return;
   status({ phase: 'starting', step: 'recovering' });
   if (transaction.backup) {
-    try { await rename(runtimeHome, `${runtimeHome}.interrupted-${Date.now()}`); }
-    catch (error) { if (error.code !== 'ENOENT') throw error; }
-    await cp(transaction.backup, runtimeHome, { recursive: true });
+    if (transaction.backupFormat === 'native-v1') {
+      const previous = verifyManifest(transaction.previous, publicKey);
+      const config = bundleConfig(path.join(userRoot, 'runtimes', previous.runtimeId), runtimeHome, previous.runtimeId);
+      await restoreUpgradeBackup({ serverPath: config.serverPath, runtimeHome, backup: transaction.backup });
+    } else if (transaction.backupFormat === undefined) {
+      // Recover already-pending transactions written by an older shell.
+      try { await rename(runtimeHome, `${runtimeHome}.interrupted-${Date.now()}`); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+      await cp(transaction.backup, runtimeHome, { recursive: true });
+    } else throw new Error('Unsupported desktop recovery package format');
   }
   await writeJSON(activeFile, transaction.previous);
   await writeJSON(transactionFile, { ...transaction, phase: 'recovered' });
@@ -263,10 +272,9 @@ async function installUpdate() {
     if (next.manifest.runtimeId === active.manifest.runtimeId) return;
     status({ phase: 'starting', step: 'updating' });
     await stopWorker();
-    const backup = path.join(userRoot, 'backups', `before-${next.manifest.runtimeId}-${Date.now()}`);
-    await mkdir(path.dirname(backup), { recursive: true });
-    await cp(runtimeHome, backup, { recursive: true });
-    transaction = { phase: 'testing', previous: active.manifest, candidate: next.manifest, backup };
+    const previousConfig = bundleConfig(active.destination, runtimeHome, active.manifest.runtimeId);
+    const backup = await createUpgradeBackup({ serverPath: previousConfig.serverPath, runtimeHome, backupRoot: path.join(userRoot, 'backups') });
+    transaction = { phase: 'testing', previous: active.manifest, candidate: next.manifest, backup, backupFormat: 'native-v1' };
     await writeJSON(transactionFile, transaction);
     const ready = await launchRuntime(next);
     await openContent(ready.url);
@@ -277,7 +285,12 @@ async function installUpdate() {
     publish();
   } catch (error) {
     await stopWorker();
-    if (transaction) await recoverInterruptedUpgrade();
+    try { if (transaction) await recoverInterruptedUpgrade(); }
+    catch (recoveryError) {
+      await logStartupFailure(recoveryError);
+      status({ phase: 'error', step: null, message: recoveryError.message });
+      return;
+    }
     await dialog.showMessageBox(window, { type: 'error', message: t('updateFailed'), detail: error.message, buttons: [t('reopen')] });
     busy = false;
     await boot();
@@ -290,7 +303,7 @@ function buildMenu() {
     detail: t('aboutDetail', { core: active?.manifest.coreVersion ?? '—', runtime: active?.manifest.runtimeId ?? '—' }),
   }) };
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'Open DeepTutor', submenu: WINDOWS ? [about, { type: 'separator' }, { role: 'quit', label: t('quit') }] : [
+    { label: 'Lorevia', submenu: WINDOWS ? [about, { type: 'separator' }, { role: 'quit', label: t('quit') }] : [
       about,
       { type: 'separator' },
       { role: 'hide', label: t('hide') }, { role: 'hideOthers', label: t('hideOthers') }, { role: 'unhide', label: t('showAll') },
@@ -345,7 +358,7 @@ else {
   ui = await readInterface();
   nativeTheme.on('updated', () => void refreshInterface());
   const coreSession = session.fromPartition('persist:deeptutor');
-  // The web UI reads this marker to name the client, e.g. "Open DeepTutor for MacOS with Apple Silicon".
+  // The web UI reads this marker to name the client, e.g. "Lorevia for MacOS with Apple Silicon".
   coreSession.setUserAgent(`${coreSession.getUserAgent()} ${agentMarker(app.getVersion())}`);
   coreSession.setPermissionCheckHandler((_contents, permission) => permission === 'clipboard-sanitized-write');
   coreSession.setPermissionRequestHandler(async (contents, permission, callback, details) => {
@@ -355,7 +368,7 @@ else {
     callback(result.response === 1);
   });
   window = new BrowserWindow({
-    title: 'Open DeepTutor', width: 1360, height: 920, minWidth: 900, minHeight: 620,
+    title: 'Lorevia', width: 1360, height: 920, minWidth: 900, minHeight: 620,
     backgroundColor: BACKGROUND[ui.theme],
     ...(WINDOWS ? {} : { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 16 } }),
     webPreferences: { preload: path.join(sourceDirectory, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false },
@@ -375,7 +388,7 @@ else {
   void boot();
   }).catch(async error => {
     await logStartupFailure(error);
-    dialog.showErrorBox('Open DeepTutor', error.message);
+    dialog.showErrorBox('Lorevia', error.message);
     exitAllowed = true;
     app.quit();
   });

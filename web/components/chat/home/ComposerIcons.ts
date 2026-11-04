@@ -118,6 +118,7 @@ const MathMotionIcon = createLucideIcon('mode-math-animator', [
 
 /** The tray's own marks for each mode; anything else keeps the icon it came with. */
 export const MODE_ICONS: Record<string, LucideIcon> = {
+  test_cases: QuizSheetIcon,
   ask_questions: AskBackIcon,
   deep_question: QuizSheetIcon,
   visualize: VisualizeRingIcon,

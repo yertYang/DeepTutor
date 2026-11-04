@@ -1,0 +1,17 @@
+# Default deployment runs Rust + Next.js. No Python services or fallback.
+# Preserve the existing host data location. The native backend rejects unsupported
+# auth/PocketBase settings instead of bypassing them. Back up data before migration.
+services:
+  deeptutor:
+    image: yanzhizhou-native:local
+    build:
+      context: .
+      dockerfile: Dockerfile.rust
+      target: production
+    init: true
+    ports:
+      - "127.0.0.1:${HOST_PORT_FRONTEND:-3782}:3782"
+    volumes:
+      - ${DEEPTUTOR_DATA_DIR:-./data}:/app/data
+    restart: unless-stopped
+    stop_grace_period: 20s

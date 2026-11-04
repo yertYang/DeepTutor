@@ -226,6 +226,28 @@
         "profile_id": {
           "title": "Profile Id",
           "type": "string"
+        },
+        "reasoning_effort": {
+          "anyOf": [
+            {
+              "enum": [
+                "none",
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max",
+                "adaptive"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reasoning Effort"
         }
       },
       "required": [
@@ -1544,6 +1566,11 @@
           "default": "submit_user_reply",
           "title": "Type",
           "type": "string"
+        },
+        "tool_call_id": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Tool Call Id"
         }
       },
       "required": [

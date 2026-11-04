@@ -1,24 +1,11 @@
 @echo off
-REM DeepTutor Backend Startup Script
-REM Activates virtual environment and starts the backend API server
-
-REM Move to the project root (this script lives in scripts/)
+setlocal
 cd /d "%~dp0.."
-
-REM Set UTF-8 encoding for stdout to support emoji characters
-set PYTHONIOENCODING=utf-8
-set PYTHONUTF8=1
-
-echo Activating Python virtual environment...
-call .venv\Scripts\activate.bat
-if errorlevel 1 (
-    echo ERROR: Failed to activate virtual environment. Make sure .venv exists.
-    pause
-    exit /b 1
+if not defined DEEPTUTOR_RUST_SERVER_BIN set "DEEPTUTOR_RUST_SERVER_BIN=%CD%\target\release\deeptutor.exe"
+if not exist "%DEEPTUTOR_RUST_SERVER_BIN%" (
+  echo Build first: cargo build --release --locked -p deeptutor-server
+  exit /b 1
 )
-
-echo Starting DeepTutor Backend Server...
-echo Backend will be available at: http://localhost:8001
-echo Press Ctrl+C to stop the server.
-python -m deeptutor.api.run_server
-pause
+if not defined DEEPTUTOR_HOME set "DEEPTUTOR_HOME=%CD%"
+"%DEEPTUTOR_RUST_SERVER_BIN%" --home "%DEEPTUTOR_HOME%" serve --port 8001 %*
+exit /b %errorlevel%

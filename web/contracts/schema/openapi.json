@@ -10,7 +10,7 @@
             "type": "string"
           },
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           },
@@ -152,15 +152,15 @@
         "properties": {
           "max_depth": {
             "default": 3,
-            "maximum": 5.0,
-            "minimum": 1.0,
+            "maximum": 5,
+            "minimum": 1,
             "title": "Max Depth",
             "type": "integer"
           },
           "max_pages": {
             "default": 200,
-            "maximum": 200.0,
-            "minimum": 1.0,
+            "maximum": 200,
+            "minimum": 1,
             "title": "Max Pages",
             "type": "integer"
           },
@@ -383,7 +383,7 @@
             "type": "string"
           },
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           },
@@ -1306,7 +1306,7 @@
             "type": "string"
           },
           "created_at": {
-            "default": 0.0,
+            "default": 0,
             "title": "Created At",
             "type": "number"
           },
@@ -1317,7 +1317,7 @@
             "type": "string"
           },
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           },
@@ -1360,7 +1360,7 @@
             "type": "string"
           },
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           },
@@ -2163,7 +2163,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -2294,26 +2294,26 @@
         "description": "Chat attachment policy (size caps + extraction budgets).\n\nBounds mirror the normalization clamps in\n``runtime_settings.CHAT_ATTACHMENT_*_RANGE`` so the API rejects loudly\nwhat the file layer would silently clamp.",
         "properties": {
           "max_chars_per_doc": {
-            "maximum": 5000000.0,
-            "minimum": 10000.0,
+            "maximum": 5000000,
+            "minimum": 10000,
             "title": "Max Chars Per Doc",
             "type": "integer"
           },
           "max_chars_total": {
-            "maximum": 5000000.0,
-            "minimum": 10000.0,
+            "maximum": 5000000,
+            "minimum": 10000,
             "title": "Max Chars Total",
             "type": "integer"
           },
           "max_file_mb": {
-            "maximum": 1024.0,
-            "minimum": 1.0,
+            "maximum": 1024,
+            "minimum": 1,
             "title": "Max File Mb",
             "type": "integer"
           },
           "max_total_mb": {
-            "maximum": 2048.0,
-            "minimum": 1.0,
+            "maximum": 2048,
+            "minimum": 1,
             "title": "Max Total Mb",
             "type": "integer"
           }
@@ -2468,8 +2468,8 @@
       "ChatResponseTimeoutUpdate": {
         "properties": {
           "chat_response_timeout": {
-            "maximum": 1800.0,
-            "minimum": 30.0,
+            "maximum": 1800,
+            "minimum": 30,
             "title": "Chat Response Timeout",
             "type": "integer"
           }
@@ -2495,8 +2495,8 @@
             "title": "Ask Hint Enabled"
           },
           "trace_count": {
-            "maximum": 100.0,
-            "minimum": 3.0,
+            "maximum": 100,
+            "minimum": 3,
             "title": "Trace Count",
             "type": "integer"
           }
@@ -2619,7 +2619,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -2765,7 +2765,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -2821,7 +2821,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -3744,8 +3744,8 @@
             "type": "string"
           },
           "time_seconds": {
-            "maximum": 86400.0,
-            "minimum": 0.0,
+            "maximum": 86400,
+            "minimum": 0,
             "title": "Time Seconds",
             "type": "number"
           }
@@ -3927,7 +3927,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -3966,7 +3966,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -4005,8 +4005,8 @@
         "description": "Admin payload for issuing a local ordinary-user device credential.",
         "properties": {
           "daily_limit_minutes": {
-            "maximum": 1440.0,
-            "minimum": 5.0,
+            "maximum": 1440,
+            "minimum": 5,
             "title": "Daily Limit Minutes",
             "type": "integer"
           },
@@ -4017,8 +4017,8 @@
             "type": "string"
           },
           "expires_in_days": {
-            "maximum": 365.0,
-            "minimum": 1.0,
+            "maximum": 365,
+            "minimum": 1,
             "title": "Expires In Days",
             "type": "integer"
           },
@@ -4165,7 +4165,7 @@
         "type": "object"
       },
       "DocumentParsingInstall": {
-        "description": "One-click pip install of an optional parser engine's package(s).",
+        "description": "Historical parser installation request. Unsupported by the native runtime.",
         "properties": {
           "engine": {
             "title": "Engine",
@@ -4176,7 +4176,8 @@
           "engine"
         ],
         "title": "DocumentParsingInstall",
-        "type": "object"
+        "type": "object",
+        "deprecated": true
       },
       "DocumentParsingTest": {
         "description": "Readiness test for one engine (defaults to the active engine).",
@@ -5742,7 +5743,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -6121,6 +6122,28 @@
           "profile_id": {
             "title": "Profile Id",
             "type": "string"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max",
+                  "adaptive"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reasoning Effort"
           }
         },
         "required": [
@@ -6179,8 +6202,8 @@
           "age": {
             "anyOf": [
               {
-                "maximum": 120.0,
-                "minimum": 3.0,
+                "maximum": 120,
+                "minimum": 3,
                 "type": "integer"
               },
               {
@@ -6577,8 +6600,8 @@
         "properties": {
           "max_async": {
             "default": 4,
-            "maximum": 32.0,
-            "minimum": 1.0,
+            "maximum": 32,
+            "minimum": 1,
             "title": "Max Async",
             "type": "integer"
           },
@@ -6624,8 +6647,8 @@
           },
           "timeout": {
             "default": 240,
-            "maximum": 3600.0,
-            "minimum": 1.0,
+            "maximum": 3600,
+            "minimum": 1,
             "title": "Timeout",
             "type": "integer"
           }
@@ -6694,8 +6717,8 @@
         "properties": {
           "max_async": {
             "default": 4,
-            "maximum": 32.0,
-            "minimum": 1.0,
+            "maximum": 32,
+            "minimum": 1,
             "title": "Max Async",
             "type": "integer"
           },
@@ -6742,8 +6765,8 @@
           },
           "timeout": {
             "default": 240,
-            "maximum": 3600.0,
-            "minimum": 1.0,
+            "maximum": 3600,
+            "minimum": 1,
             "title": "Timeout",
             "type": "integer"
           }
@@ -6868,8 +6891,8 @@
           },
           "limit": {
             "default": 20,
-            "maximum": 50.0,
-            "minimum": 1.0,
+            "maximum": 50,
+            "minimum": 1,
             "title": "Limit",
             "type": "integer"
           }
@@ -7168,8 +7191,8 @@
           },
           "tool_timeout": {
             "default": 30,
-            "maximum": 600.0,
-            "minimum": 1.0,
+            "maximum": 600,
+            "minimum": 1,
             "title": "Tool Timeout",
             "type": "integer"
           },
@@ -7229,13 +7252,13 @@
         "properties": {
           "end_locator": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "End Locator",
             "type": "integer"
           },
           "end_seconds": {
-            "maximum": 86400.0,
-            "minimum": 0.0,
+            "maximum": 86400,
+            "minimum": 0,
             "title": "End Seconds",
             "type": "number"
           },
@@ -7264,13 +7287,13 @@
           },
           "start_locator": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Start Locator",
             "type": "integer"
           },
           "start_seconds": {
-            "maximum": 86400.0,
-            "minimum": 0.0,
+            "maximum": 86400,
+            "minimum": 0,
             "title": "Start Seconds",
             "type": "number"
           }
@@ -7288,7 +7311,7 @@
           "end_locator": {
             "anyOf": [
               {
-                "minimum": 0.0,
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -7300,8 +7323,8 @@
           "end_seconds": {
             "anyOf": [
               {
-                "maximum": 86400.0,
-                "minimum": 0.0,
+                "maximum": 86400,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -7372,7 +7395,7 @@
           "start_locator": {
             "anyOf": [
               {
-                "minimum": 0.0,
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -7384,8 +7407,8 @@
           "start_seconds": {
             "anyOf": [
               {
-                "maximum": 86400.0,
-                "minimum": 0.0,
+                "maximum": 86400,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -7401,9 +7424,9 @@
       "MarkSuggestionRequest": {
         "properties": {
           "time_seconds": {
-            "default": 0.0,
-            "maximum": 86400.0,
-            "minimum": 0.0,
+            "default": 0,
+            "maximum": 86400,
+            "minimum": 0,
             "title": "Time Seconds",
             "type": "number"
           }
@@ -7493,7 +7516,7 @@
             "type": "string"
           },
           "created_at": {
-            "default": 0.0,
+            "default": 0,
             "title": "Created At",
             "type": "number"
           },
@@ -7618,7 +7641,7 @@
             "type": "string"
           },
           "created_at": {
-            "default": 0.0,
+            "default": 0,
             "title": "Created At",
             "type": "number"
           },
@@ -8005,7 +8028,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -8109,8 +8132,8 @@
       "NetworkSettingsUpdate": {
         "properties": {
           "backend_port": {
-            "maximum": 65535.0,
-            "minimum": 1.0,
+            "maximum": 65535,
+            "minimum": 1,
             "title": "Backend Port",
             "type": "integer"
           },
@@ -8122,8 +8145,8 @@
             "type": "array"
           },
           "frontend_port": {
-            "maximum": 65535.0,
-            "minimum": 1.0,
+            "maximum": 65535,
+            "minimum": 1,
             "title": "Frontend Port",
             "type": "integer"
           },
@@ -9023,7 +9046,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -9042,12 +9065,12 @@
       "PositionInfo": {
         "properties": {
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           },
           "percentage": {
-            "default": 0.0,
+            "default": 0,
             "title": "Percentage",
             "type": "number"
           },
@@ -9058,7 +9081,7 @@
             "type": "string"
           },
           "updated_at": {
-            "default": 0.0,
+            "default": 0,
             "title": "Updated At",
             "type": "number"
           }
@@ -9072,15 +9095,15 @@
       "PositionPayload": {
         "properties": {
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           },
           "percentage": {
             "anyOf": [
               {
-                "maximum": 1.0,
-                "minimum": 0.0,
+                "maximum": 1,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -9649,7 +9672,7 @@
             "type": "string"
           },
           "selected_index": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Selected Index",
             "type": "integer"
           }
@@ -9672,7 +9695,7 @@
             "type": "array"
           },
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           },
@@ -9950,7 +9973,7 @@
       "ReadAloudAudioPayload": {
         "properties": {
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           }
@@ -9981,7 +10004,7 @@
             "type": "string"
           },
           "locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Locator",
             "type": "integer"
           },
@@ -10036,24 +10059,24 @@
         "description": "One material's Reading progress in an account's learning records.",
         "properties": {
           "furthest_locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Furthest Locator",
             "type": "integer"
           },
           "furthest_percentage": {
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Furthest Percentage",
             "type": "number"
           },
           "latest_locator": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Latest Locator",
             "type": "integer"
           },
           "latest_percentage": {
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Latest Percentage",
             "type": "number"
           },
@@ -10221,7 +10244,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -10250,7 +10273,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -10514,7 +10537,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -10634,7 +10657,7 @@
             "type": "boolean"
           },
           "version": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Version",
             "type": "integer"
           }
@@ -11806,7 +11829,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -12317,12 +12340,12 @@
       "TextPositionSelectorPayload": {
         "properties": {
           "end": {
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "End",
             "type": "integer"
           },
           "start": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Start",
             "type": "integer"
           },
@@ -13534,7 +13557,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 1.0,
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -13598,8 +13621,8 @@
           "position": {
             "anyOf": [
               {
-                "maximum": 100000.0,
-                "minimum": 0.0,
+                "maximum": 100000,
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -13743,7 +13766,7 @@
           "expected_revision": {
             "anyOf": [
               {
-                "minimum": 0.0,
+                "minimum": 0,
                 "type": "integer"
               },
               {
@@ -15069,8 +15092,8 @@
           },
           "sync_interval_hours": {
             "default": 24,
-            "maximum": 168.0,
-            "minimum": 1.0,
+            "maximum": 168,
+            "minimum": 1,
             "title": "Sync Interval Hours",
             "type": "integer"
           },
@@ -15094,8 +15117,8 @@
           },
           "sync_interval_hours": {
             "default": 24,
-            "maximum": 168.0,
-            "minimum": 1.0,
+            "maximum": 168,
+            "minimum": 1,
             "title": "Sync Interval Hours",
             "type": "integer"
           }
@@ -15494,14 +15517,14 @@
         "properties": {
           "duration_seconds": {
             "default": 0,
-            "maximum": 86400.0,
-            "minimum": 0.0,
+            "maximum": 86400,
+            "minimum": 0,
             "title": "Duration Seconds",
             "type": "number"
           },
           "time_seconds": {
-            "maximum": 86400.0,
-            "minimum": 0.0,
+            "maximum": 86400,
+            "minimum": 0,
             "title": "Time Seconds",
             "type": "number"
           }
@@ -25810,7 +25833,7 @@
     },
     "/api/knowledge-bases/delete": {
       "post": {
-        "description": "Delete a knowledge base named in the body rather than in the path.\n\nThe path route below cannot reach every registered name. A name is a\n``kb_config.json`` key, and until the ``register_*`` methods validated it\nthe connect-* endpoints wrote whatever the user typed — including a ``/``.\nuvicorn percent-decodes the path before routing, so ``%2F`` becomes a real\nseparator and ``{kb_name}`` (compiled to ``[^/]+``) cannot span it: every\nper-KB route 404s and the KB is visible in the list but unreachable.\n\nA body is never split into path segments, so this reaches those entries.\nWidening the path route to ``{kb_name:path}`` would not do — it is\ndeclared ahead of the DELETE routes for linked folders, GitHub sources and\nweb sources, and a greedy converter would silently swallow all three.",
+        "description": "Delete a knowledge base identified in the request body, avoiding ambiguous encoded path separators.",
         "operationId": "delete_knowledge_base_by_name_api_knowledge_bases_delete_post",
         "parameters": [
           {
@@ -27398,7 +27421,7 @@
     },
     "/api/knowledge-bases/rag-pipelines/llamaindex/config": {
       "get": {
-        "description": "Read the LlamaIndex engine's retrieval + chunking knobs.\n\n``retrieval_profile`` is what is *configured*; ``effective_retrieval_profile``\nis what would actually run — a hybrid configuration degrades to vector-only\nwhen the BM25 package is missing (e.g. Python 3.14 installs, #1792).",
+        "description": "Historical vector-engine retrieval settings. This engine is not implemented by the native runtime.",
         "operationId": "get_llamaindex_pipeline_config_api_knowledge_bases_rag_pipelines_llamaindex_config_get",
         "parameters": [
           {
@@ -27457,7 +27480,8 @@
         "summary": "Get Llamaindex Pipeline Config",
         "tags": [
           "knowledge-bases"
-        ]
+        ],
+        "deprecated": true
       },
       "put": {
         "description": "Persist the LlamaIndex engine knobs.\n\nRetrieval knobs take effect on the next query; indexing knobs only affect\ndocuments processed after the save.",
@@ -55300,7 +55324,7 @@
     },
     "/api/settings/document-parsing/models/download": {
       "post": {
-        "description": "Kick off a one-click model-weight download for an engine (e.g. Docling).\n\nRuns the engine's downloader console script (``docling-tools models\ndownload``) as a background subprocess; progress is polled via the shared job\nstatus endpoint. The engine must be in ``ENGINE_MODEL_DOWNLOADERS`` and its\nscript reachable next to the server's python or on PATH.",
+        "description": "Historical parser model-download request. Unsupported by the native runtime.",
         "operationId": "start_document_parsing_model_download_api_settings_document_parsing_models_download_post",
         "parameters": [
           {
@@ -55369,7 +55393,8 @@
         "summary": "Start Document Parsing Model Download",
         "tags": [
           "settings"
-        ]
+        ],
+        "deprecated": true
       }
     },
     "/api/settings/document-parsing/test": {

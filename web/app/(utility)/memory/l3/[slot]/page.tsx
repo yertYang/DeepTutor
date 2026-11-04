@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import MemoryWorkbench from "@/components/memory/MemoryWorkbench";
 
-const SLOTS = ["recent", "profile", "scope"];
+const SLOTS = ["recent", "profile", "scope", "preferences"];
 
 function L3WorkbenchInner() {
   const params = useParams<{ slot: string }>();

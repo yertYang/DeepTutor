@@ -1,4 +1,4 @@
-// Renders assets/icon.icns: the black DeepTutor mark on a white macOS tile.
+// Renders assets/icon.icns: the Lorevia mark on a white macOS tile.
 // Usage: swift scripts/make-icon.swift <mark.png> <output.icns>
 import AppKit
 
@@ -55,16 +55,22 @@ func render(_ size: Int) -> Data {
   return rep.representation(using: .png, properties: [:])!
 }
 
-let iconset = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("DeepTutor-\(getpid()).iconset")
-try FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
-for base in [16, 32, 128, 256, 512] {
-  try render(base).write(to: iconset.appendingPathComponent("icon_\(base)x\(base).png"))
-  try render(base * 2).write(to: iconset.appendingPathComponent("icon_\(base)x\(base)@2x.png"))
+// ICNS contains PNG representations. Write the container directly so icon
+// generation also works in build environments without iconutil's image service.
+func length(_ value: Int) -> Data {
+  var bigEndian = UInt32(value).bigEndian
+  return withUnsafeBytes(of: &bigEndian) { Data($0) }
 }
-let task = Process()
-task.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
-task.arguments = ["-c", "icns", iconset.path, "-o", arguments[2]]
-try task.run()
-task.waitUntilExit()
-try? FileManager.default.removeItem(at: iconset)
-exit(task.terminationStatus)
+var representations = Data()
+for (type, size) in [("icp4", 16), ("icp5", 32), ("icp6", 64),
+                     ("ic07", 128), ("ic08", 256), ("ic09", 512), ("ic10", 1024),
+                     ("ic11", 32), ("ic12", 64), ("ic13", 256), ("ic14", 512)] {
+  let png = render(size)
+  representations.append(type.data(using: .ascii)!)
+  representations.append(length(png.count + 8))
+  representations.append(png)
+}
+var icon = "icns".data(using: .ascii)!
+icon.append(length(representations.count + 8))
+icon.append(representations)
+try icon.write(to: URL(fileURLWithPath: arguments[2]))

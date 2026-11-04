@@ -10,6 +10,7 @@ export interface ModuleStatus {
   ready: boolean
   navigation: string[]
   issues: string[]
+  features?: Record<string, boolean>
 }
 
 export function moduleRouteAvailable(path: string, modules: ModuleStatus[]): boolean {
@@ -22,14 +23,28 @@ export function moduleRouteAvailable(path: string, modules: ModuleStatus[]): boo
 // One deployment inventory request serves the sidebar, route gate and runtimes.
 // A focus/retry refresh observes a server restarted with a different selection.
 let pending: Promise<ModuleStatus[]> | null = null
+export async function fetchModuleInventory(): Promise<ModuleStatus[]> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15_000)
+  try {
+    const response = await apiFetch(apiUrl('/api/modules'), { signal: controller.signal })
+    if (!response.ok) throw new Error('Module inventory unavailable')
+    const result: unknown = await response.json()
+    const modules = result && typeof result === 'object' && 'modules' in result ? result.modules : null
+    if (!Array.isArray(modules) || !modules.every(module =>
+      module && typeof module === 'object' && typeof module.id === 'string' &&
+      typeof module.installed === 'boolean' && typeof module.enabled === 'boolean' &&
+      Array.isArray(module.navigation) && module.navigation.every((path: unknown) => typeof path === 'string')
+    )) throw new Error('Invalid module inventory')
+    return modules as ModuleStatus[]
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 function readModules() {
   if (!pending) {
-    pending = apiFetch(apiUrl('/api/modules'))
-      .then(async response => {
-        if (!response.ok) throw new Error('Module inventory unavailable')
-        const result = await response.json() as { modules: ModuleStatus[] }
-        return result.modules
-      })
+    pending = fetchModuleInventory()
   }
   return pending
 }

@@ -7,7 +7,7 @@ function nonEmpty(value: string | undefined): string | undefined {
   return normalized ? normalized : undefined;
 }
 
-/** Resolve the address used by the Next server to reach FastAPI. */
+/** Resolve the address used by the Next server to reach the Rust backend. */
 export function resolveBackendApiBase(
   env: BackendRuntimeEnvironment = process.env,
 ): string {

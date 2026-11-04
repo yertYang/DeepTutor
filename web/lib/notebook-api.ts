@@ -290,7 +290,7 @@ export interface NotebookEntryListResponse {
 
 async function expectJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    // Surface FastAPI's `detail` when there is one: "A category named 'Math'
+    // Surface the backend's `detail` when there is one: "A category named 'Math'
     // already exists" is actionable, "Request failed: 409" is not.
     let detail = "";
     try {

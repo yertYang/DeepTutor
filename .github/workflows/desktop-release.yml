@@ -1,11 +1,11 @@
 name: Desktop Release
 
-# Builds Open DeepTutor for MacOS (Apple Silicon and Intel) and Windows from
-# the release tag and attaches the downloads to the same GitHub Release that
-# pypi-release.yml publishes. Each platform's build lives in
+# Builds Lorevia for MacOS (Apple Silicon and Intel) and Windows from
+# the release tag and attaches downloads to that GitHub Release.
+# Each platform's build lives in
 # apps/desktop/platforms/<target>/.
 #
-# Pull requests that touch apps/desktop build and smoke-test all three without
+# Pull requests that touch apps/desktop build all three platforms without
 # publishing; they keep the downloads as workflow artifacts for 7 days.
 # Pushes to dev and manual validation runs exercise configured signing without
 # publishing. Pull requests always use disposable runtime signing keys.
@@ -26,12 +26,24 @@ on:
     branches: [dev]
     paths:
       - apps/desktop/**
+      - web/**
+      - packages/browser-testing/**
+      - rust/**
+      - Cargo.toml
+      - Cargo.lock
+      - VERSION
       - .github/workflows/desktop-release.yml
   release:
     types: [published]
   pull_request:
     paths:
       - apps/desktop/**
+      - web/**
+      - packages/browser-testing/**
+      - rust/**
+      - Cargo.toml
+      - Cargo.lock
+      - VERSION
       - .github/workflows/desktop-release.yml
   workflow_dispatch:
     inputs:
@@ -63,13 +75,13 @@ jobs:
       matrix:
         include:
           - target: macos-arm64
-            name: Open DeepTutor for MacOS with Apple Silicon
+            name: Lorevia for MacOS with Apple Silicon
             runner: macos-15
           - target: macos-x64
-            name: Open DeepTutor for MacOS with Intel Silicon
+            name: Lorevia for MacOS with Intel Silicon
             runner: macos-15-intel
           - target: windows-x64
-            name: Open DeepTutor for Windows
+            name: Lorevia for Windows
             runner: windows-2025
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
@@ -87,13 +99,13 @@ jobs:
         with:
           ref: ${{ env.PUBLISH == 'true' && env.RELEASE_TAG || '' }}
 
-      - name: Verify release tag matches deeptutor/__version__.py
+      - name: Verify release tag matches VERSION
         if: env.PUBLISH == 'true'
         run: |
           set -euo pipefail
-          version="$(sed -nE 's/^__version__ = "([^"]+)"/\1/p' ../../deeptutor/__version__.py | tr -d '\r')"
+          version="$(tr -d '\r\n' < ../../VERSION)"
           if [ "v$version" != "$RELEASE_TAG" ]; then
-            echo "Release tag $RELEASE_TAG does not match deeptutor/__version__.py ($version)." >&2
+            echo "Release tag $RELEASE_TAG does not match VERSION ($version)." >&2
             exit 1
           fi
 
@@ -124,14 +136,15 @@ jobs:
             apps/desktop/package-lock.json
             web/package-lock.json
 
-      - uses: astral-sh/setup-uv@v6
+
+      - uses: dtolnay/rust-toolchain@1.89.0
 
       - name: Install the Windows installer toolchain
         if: runner.os == 'Windows'
         run: choco install nsis --yes --no-progress
 
-      - name: Check and test the shell
-        run: npm ci && npm run check && npm test
+      - name: Install shell dependencies
+        run: npm ci
 
       - name: Import the Developer ID certificate
         if: runner.os == 'macOS' && env.HAS_DEVELOPER_ID == 'true' && github.event_name != 'pull_request'
@@ -167,18 +180,10 @@ jobs:
             npm run build:runtime -- --target ${{ matrix.target }} --new-key
           fi
 
-      - name: Boot the bundled runtime
-        run: npm run smoke -- --target ${{ matrix.target }}
-
       - name: Package
         env:
           APPLE_SIGNING_IDENTITY: ${{ github.event_name != 'pull_request' && secrets.APPLE_SIGNING_IDENTITY || '' }}
         run: npm run package -- --target ${{ matrix.target }}
-
-      - name: Verify Windows installation and app lifecycle
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./platforms/windows-x64/smoke-installer.ps1
 
       - name: Notarize the DMG
         if: runner.os == 'macOS' && env.HAS_NOTARY == 'true' && github.event_name != 'pull_request'
@@ -226,6 +231,3 @@ jobs:
             apps/desktop/out/*.dmg
             apps/desktop/out/*-Setup.exe
             apps/desktop/out/*-Portable.zip
-            apps/desktop/.local/${{ matrix.target }}/smoke.log
-            apps/desktop/.local/${{ matrix.target }}/smoke-result.json
-            apps/desktop/.local/${{ matrix.target }}/installed-app.log

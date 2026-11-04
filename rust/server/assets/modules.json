@@ -1,0 +1,357 @@
+{
+  "modules": [
+    {
+      "id": "audio-overview",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "books",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [
+        "/books",
+        "/learning/books"
+      ],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "calendar",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [
+        "/calendar"
+      ],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "co-writer",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [
+        "/co-writer"
+      ],
+      "issues": [],
+      "features": {
+        "native_editor": true,
+        "ai_companion": false,
+        "word_import": true,
+        "flashcards": false,
+        "reviewed_ai_edits": true
+      }
+    },
+    {
+      "id": "core",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [],
+      "issues": []
+    },
+    {
+      "id": "knowledge",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [
+        "/knowledge-bases"
+      ],
+      "issues": [],
+      "features": {
+        "native_lexical": true,
+        "binary_parsers": true,
+        "source_reader": true,
+        "source_notes": true,
+        "ocr": false,
+        "advanced_providers": false
+      }
+    },
+    {
+      "id": "mastery",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [
+        "/mastery",
+        "/learning/mastery"
+      ],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "memory",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [
+        "/memory"
+      ],
+      "issues": [],
+      "features": {
+        "native_documents": true,
+        "versions": true,
+        "consolidation": true,
+        "automatic_cleanup_proposals": true,
+        "provenance_graph": true
+      }
+    },
+    {
+      "id": "notebook",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [
+        "/notebooks"
+      ],
+      "issues": [],
+      "features": {
+        "favorites": true,
+        "practice": false
+      }
+    },
+    {
+      "id": "parser-docling",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "parser-liteparse",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "parser-markitdown",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "parser-pymupdf4llm",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "parsing",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "partners",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [
+        "/partners"
+      ],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "providers",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "questions",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "reading",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [
+        "/reading",
+        "/learning/reading",
+        "/learning/watching"
+      ],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "renderer-manim",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "research",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "server",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [],
+      "issues": []
+    },
+    {
+      "id": "solve",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [],
+      "issues": []
+    },
+    {
+      "id": "video-lesson",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "visualize",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [],
+      "issues": [
+        "Not migrated to the independent Rust server."
+      ]
+    },
+    {
+      "id": "web",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [],
+      "issues": []
+    },
+    {
+      "id": "practice",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [
+        "/learning/practice"
+      ],
+      "issues": [
+        "Practice has not yet been migrated to the Rust server."
+      ]
+    },
+    {
+      "id": "memory-advanced",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [
+        "/memory/l1",
+        "/memory/resolve"
+      ],
+      "issues": [
+        "Historical L1 browsing, semantic conflict resolution and automatic semantic consolidation remain unavailable."
+      ]
+    },
+    {
+      "id": "browser-testing",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [
+        "/browser-testing"
+      ],
+      "issues": [],
+      "features": {
+        "declarative_cases": true,
+        "playwright_export": true,
+        "screenshots": true
+      }
+    },
+    {
+      "id": "native-study",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [
+        "/learning/native"
+      ],
+      "issues": [],
+      "features": {
+        "research": true,
+        "practice_questions": true,
+        "learning_paths": true,
+        "answer_receipts": true,
+        "source_evidence": true,
+        "reviewed_document_proposals": true
+      }
+    },
+    {
+      "id": "native-memory-graph",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [
+        "/memory/graph"
+      ],
+      "issues": [],
+      "features": {
+        "explicit_provenance": true
+      }
+    }
+  ]
+}

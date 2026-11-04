@@ -20,8 +20,3 @@ export function configureTypeIncludes(contents, distDir) {
     `${distDir}/dev/types/**/*.ts`,
   ]);
 }
-
-/** Type-check source without trusting an arbitrary historical Next cache. */
-export function removeNextTypeIncludes(contents) {
-  return rewriteTypeIncludes(contents, []);
-}

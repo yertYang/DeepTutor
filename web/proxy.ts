@@ -14,15 +14,14 @@ import {
   isWebSocketPath,
 } from "./lib/proxy-policy";
 
-// Backend base URL for `/api/*` and `/ws/*` rewrites. The container entrypoint
-// exports `DEEPTUTOR_API_BASE_URL` from `data/user/settings/system.json`
-// (preferring `next_public_api_base`, then `next_public_api_base_external`,
-// then `http://127.0.0.1:${BACKEND_PORT}`). This last-resort default applies
-// only when nothing exported the variable at all.
+// Backend base URL for `/api/*` and `/ws/*` rewrites. The native launcher
+// exports `DEEPTUTOR_API_BASE_URL` using the backend's listening address.
+// The resolver also supports BACKEND_PORT and NEXT_PUBLIC_API_BASE for
+// standalone frontend development.
 //
 // The loopback is spelled as the IPv4 literal, not `localhost`: on a dual-stack
-// host that name resolves to ::1 first, while uvicorn binds 0.0.0.0 (IPv4
-// only), so every rewrite would fail to connect.
+// host that name may resolve to ::1 first, while the native launcher binds
+// the backend to 127.0.0.1, causing an IPv6 connection to fail.
 const API_BASE_URL = resolveBackendApiBase();
 
 const AUTH_ENABLED = parseAuthEnabled(
@@ -96,7 +95,7 @@ export const config = {
   // and /ws/* paths are explicitly handled above (rewritten to the backend);
   // Knowledge-base creation and upload requests that carry multipart bodies
   // are handled by dedicated App Router endpoints that stream directly to
-  // FastAPI. The browser's list call uses /api/knowledge-bases/list so it can
+  // the backend. The browser's list call uses /api/knowledge-bases/list so it can
   // pass through the normal backend rewrite below. Excluding multipart routes
   // here is crucial:
   // merely entering Proxy makes Next clone and cap the multipart body.

@@ -1,0 +1,58 @@
+pub mod api;
+pub mod application;
+pub mod catalog_edit;
+mod codex_session;
+pub mod config;
+mod context;
+mod data_api;
+pub mod error;
+pub mod language;
+pub mod launcher;
+pub mod metrics;
+mod notifications;
+pub mod oauth;
+pub mod oauth_web;
+pub mod provider;
+pub mod settings_api;
+pub mod store;
+
+pub use application::Application;
+pub use error::{Error, Result};
+
+mod provider_protocol;
+pub mod tools;
+mod turn_engine;
+mod turn_queries;
+
+mod ask_user;
+
+pub mod capability;
+pub mod learning;
+mod learning_api;
+pub mod memory_graph;
+pub mod memory_maintenance;
+mod solve;
+
+mod generation;
+
+mod document_parser;
+pub mod knowledge;
+mod knowledge_api;
+pub mod ocr;
+mod study;
+mod study_api;
+mod workspaces;
+mod workspaces_api;
+
+pub mod backup;
+pub mod browser_testing;
+mod browser_testing_api;
+pub mod recovery;
+
+mod client_api;
+
+pub mod search;
+
+pub mod documents;
+mod documents_api;
+pub mod memory_cli;

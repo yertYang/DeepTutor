@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { capabilityForPath } from "@/lib/capability-routes";
 
 import { RequireCapability } from "./RequireCapability";
+import { WorkspaceError, WorkspaceLoading } from "@/components/common/WorkspaceFeedback";
 
 /**
  * Route-level gate: derives the required model capability from the current
@@ -19,11 +20,14 @@ export default function CapabilityGate({
   children: React.ReactNode;
 }) {
   const pathname = usePathname() ?? "";
-  const capability = capabilityForPath(pathname);
+  const requestedCapability = capabilityForPath(pathname);
   const { modules, error, reload } = useModules();
   const { t } = useTranslation();
-  if (error) return <button onClick={reload}>{t("Retry")}</button>;
-  if (!modules) return <div aria-busy="true">{t("Loading...")}</div>;
+  if (error) return <WorkspaceError reset={reload} />;
+  if (!modules) return <WorkspaceLoading />;
+  const capability = modules.some(module => module.features?.native_editor &&
+    module.navigation.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`)))
+    ? null : requestedCapability;
   if (!moduleRouteAvailable(pathname, modules)) {
     return <p className="p-6">{t("This module is not installed or is disabled.")}</p>;
   }

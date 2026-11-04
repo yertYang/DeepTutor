@@ -1,5 +1,7 @@
 "use client";
 
+import ContentImage from "@/components/common/ContentImage";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Code2, Expand, Image as ImageIcon, Timer, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -120,7 +122,7 @@ export default function MathAnimatorViewer({
                 onClick={() => setFullscreenUrl(resolveAssetUrl(item.url))}
                 className="group relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background)]"
               >
-                <img
+                <ContentImage
                   src={resolveAssetUrl(item.url)}
                   alt={item.label || item.filename}
                   className="max-h-[280px] w-full object-contain"
@@ -194,8 +196,9 @@ export default function MathAnimatorViewer({
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-6"
           onClick={() => setFullscreenUrl(null)}
         >
-          <img
+          <ContentImage
             src={fullscreenUrl}
+            loading="eager"
             alt={t("Fullscreen math animation output")}
             className="max-h-full max-w-full object-contain"
           />

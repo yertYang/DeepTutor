@@ -1,5 +1,5 @@
 // Vendored from Jakubantalik/Libraries, packages/thinking-orbs
-// (MIT, source commit 3862ffa345217443b63696a8c331a0664eea4b04). See THIRD_PARTY_NOTICES.md at the repo root.
+// (MIT, source commit 3862ffa345217443b63696a8c331a0664eea4b04). See THIRD_PARTY_NOTICES.txt at the repo root.
 //
 // Local changes, each marked "DeepTutor local addition/change" at its site:
 //  - `engine/core.ts`  — an optional `Tint` threaded through the painters, so

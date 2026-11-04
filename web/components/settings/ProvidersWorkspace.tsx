@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { formatConfiguredProviderName, formatProviderLabel } from "@/lib/provider-branding";
 import ProviderIcon from "@/components/common/ProviderIcon";
 import { randomUuid } from "@/lib/random-uuid";
+import { importDiscoveredChatModels } from "@/lib/provider-model-import";
 import {
   useSettings,
   type CatalogConnection,
@@ -24,6 +25,7 @@ import {
   SERVICE_TITLES,
   PROVIDER_SERVICES,
   providerServiceSupport,
+  providerAdapter,
 } from "@/lib/provider-registry";
 import {
   EditableRegistryName,
@@ -81,6 +83,7 @@ export function ProvidersWorkspace() {
   const [vendor, setVendor] = useState("");
   const [query, setQuery] = useState("");
   const [auth, setAuth] = useState("");
+  const [imported, setImported] = useState<{ source: string; count: number } | null>(null);
   // The add panel and the selected provider live in the URL so a refresh
   // lands on the same surface instead of the bare list.
   const syncQuery = (updates: Record<string, string | null>) => {
@@ -392,8 +395,34 @@ export function ProvidersWorkspace() {
                         discovery={connection.discovery}
                         hints={hints}
                         showCapabilities={false}
-                        onResult={(result) => change("discovery", result)}
+                        autoDiscover={
+                          providerServiceSupport(source, "llm", connectionTargets, providers).enabled &&
+                          Boolean(connection.base_url || defaultBaseUrl) &&
+                          (option?.requires_api_key === false ||
+                            (Array.isArray(connection.api_key) ? connection.api_key : [connection.api_key])
+                              .some(key => Boolean(key?.trim()) && !/^\*+$/.test(key.trim())))
+                        }
+                        onResult={(result) => {
+                          const ref = providerAdapter(source, "llm", connectionTargets, providers);
+                          const supportsChat = providerServiceSupport(source, "llm", connectionTargets, providers).enabled;
+                          const count = supportsChat
+                            ? importDiscoveredChatModels(structuredClone(draft), source.id, result, ref)
+                            : 0;
+                          const signature = JSON.stringify({ ...providerProbeInput(source, defaultBaseUrl), api_format: apiFormat });
+                          mutateCatalog(next => {
+                            const current = providerRegistry(next).find(item => item.id === source.id);
+                            if (!current || JSON.stringify({ ...providerProbeInput(current, defaultBaseUrl), api_format: current.source.api_format || apiFormat }) !== signature) return;
+                            updateProvider(next, source.ref, "discovery", result);
+                            if (supportsChat) importDiscoveredChatModels(next, source.id, result, ref);
+                          });
+                          setImported({ source: source.id, count });
+                        }}
                       />
+                      {imported?.source === source.id && imported.count > 0 && (
+                        <p role="status" className="text-[13px] text-emerald-700 dark:text-emerald-400">
+                          {t("Automatically added {{count}} models. Apply changes to use them in chat.", { count: imported.count })}
+                        </p>
+                      )}
                     </>
                   )}
                   <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-4">

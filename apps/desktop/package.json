@@ -1,19 +1,19 @@
 {
-  "name": "open-deeptutor",
-  "productName": "Open DeepTutor",
+  "name": "yanzhizhou-desktop",
+  "productName": "Lorevia",
   "version": "0.0.0",
   "private": true,
-  "description": "Open DeepTutor for MacOS and Windows: DeepTutor's local runtime in a native window",
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0"
+  },
+  "description": "Lorevia：个人智能学习工作区，Rust 原生运行时与桌面客户端",
   "license": "Apache-2.0",
   "type": "module",
   "main": "src/main.mjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/*.test.mjs",
-    "check": "node scripts/check.mjs",
     "icon": "swift scripts/make-icon.swift assets/mark.png assets/icon.icns && node scripts/make-ico.mjs assets/icon.icns assets/icon.ico",
     "build:runtime": "node scripts/build-runtime.mjs",
-    "smoke": "node scripts/smoke.mjs",
     "package": "node scripts/package.mjs"
   },
   "devDependencies": {

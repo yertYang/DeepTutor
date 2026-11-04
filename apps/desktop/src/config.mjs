@@ -26,7 +26,10 @@ export function validateConfig(value) {
   }
   if (!['source', 'bundled'].includes(value.mode)) throw new Error('Unsupported runtime mode');
   const result = { schemaVersion: 1, mode: value.mode };
-  for (const name of ['sourcePath', 'pythonPath', 'nodePath', 'runtimeHome']) {
+  const nativeName = process.platform === 'win32' ? 'deeptutor-server.exe' : 'deeptutor-server';
+  value = { ...value, serverPath: value.serverPath || (typeof value.sourcePath === 'string' ?
+    path.join(value.sourcePath, value.mode === 'bundled' ? 'native' : 'target/release', nativeName) : '') };
+  for (const name of ['sourcePath', 'serverPath', 'nodePath', 'runtimeHome']) {
     if (typeof value[name] !== 'string' || !path.isAbsolute(value[name]) || value[name].includes('\0')) {
       throw new Error(`${name} must be an absolute path`);
     }
@@ -39,7 +42,7 @@ export function validateConfig(value) {
   }
   const relative = path.relative(result.sourcePath, result.runtimeHome);
   if (!relative || (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative))) {
-    throw new Error('The desktop data folder must be outside the DeepTutor source folder');
+    throw new Error('The desktop data folder must be outside the Lorevia source folder');
   }
   return result;
 }

@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
-import KnowledgePage from "@/components/knowledge/KnowledgePage";
+import KnowledgePage from "@/components/knowledge/NativeKnowledgeWorkspace";
 
 export default function Page() {
   return (

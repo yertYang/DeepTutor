@@ -1,5 +1,7 @@
 "use client";
 
+import { BRAND_ASSETS, BRAND_DIMENSIONS, PRODUCT_NAME } from "@/lib/product";
+
 // Classic UI snapshot — web/components/sidebar/SidebarShell.tsx as it ships on
 // dev (frozen at 3cbecb2). Do not evolve this copy; the modern shell lives
 // in components/sidebar/SidebarShell.tsx.
@@ -189,12 +191,12 @@ export function ClassicSidebarShell({
           <Link
             href="/"
             prefetch={false}
-            aria-label="DeepTutor"
+            aria-label={PRODUCT_NAME}
             className="flex items-center justify-center transition-opacity duration-150 group-hover/sb:opacity-0"
           >
             <Image
-              src="/brand/color-logo.png"
-              alt="DeepTutor"
+              src={BRAND_ASSETS.logo}
+              alt={PRODUCT_NAME}
               width={22}
               height={22}
               className="h-[22px] w-[22px] rounded-md"
@@ -257,19 +259,19 @@ export function ClassicSidebarShell({
       <div className="flex h-[52px] shrink-0 items-center justify-between px-4">
         <Link href="/" prefetch={false} className="group flex items-center gap-1.5">
           <Image
-            src="/brand/color-logo.png"
-            alt="DeepTutor"
+            src={BRAND_ASSETS.logo}
+            alt={PRODUCT_NAME}
             width={22}
             height={22}
             className="h-[22px] w-[22px] transition-transform duration-200 group-hover:scale-105"
           />
           <Image
-            src="/brand/color-word.png"
-            alt="DeepTutor"
-            width={1200}
-            height={310}
+            src={BRAND_ASSETS.monoWordmark}
+            alt={PRODUCT_NAME}
+            width={BRAND_DIMENSIONS.wordmark.width}
+            height={BRAND_DIMENSIONS.wordmark.height}
             priority
-            className="h-[22px] w-auto transition-transform duration-200 group-hover:scale-105"
+            className="h-[22px] w-auto dark:invert transition-transform duration-200 group-hover:scale-105"
           />
         </Link>
         {/* The rail is a desktop affordance; in the drawer the scrim and the

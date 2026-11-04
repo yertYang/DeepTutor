@@ -19,13 +19,13 @@ export async function packageMac(target) {
     extraResource: [target.seed],
     appCategoryType: 'public.app-category.education',
     extendInfo: {
-      NSMicrophoneUsageDescription: 'Open DeepTutor uses the microphone when you speak to your tutor.',
-      NSCameraUsageDescription: 'Open DeepTutor uses the camera when you capture learning material.',
-      NSLocalNetworkUsageDescription: 'Open DeepTutor runs its learning services on this Mac.',
+      NSMicrophoneUsageDescription: 'Lorevia uses the microphone when you speak to your tutor.',
+      NSCameraUsageDescription: 'Lorevia uses the camera when you capture learning material.',
+      NSLocalNetworkUsageDescription: 'Lorevia runs its learning services on this Mac.',
     },
     ...(identity ? { osxSign: { identity, optionsForFile: () => ({ hardenedRuntime: true, entitlements }) } } : {}),
   });
-  const bundle = path.join(built, 'Open DeepTutor.app');
+  const bundle = path.join(built, 'Lorevia.app');
   if (!identity) execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', bundle], { stdio: 'inherit' });
   execFileSync('/usr/bin/codesign', ['--verify', '--deep', '--strict', bundle], { stdio: 'inherit' });
 
@@ -33,11 +33,11 @@ export async function packageMac(target) {
   const dmg = path.join(out, `${target.artifact}-v${version}.dmg`);
   await rm(dmgStage, { recursive: true, force: true });
   await mkdir(dmgStage, { recursive: true });
-  await cp(bundle, path.join(dmgStage, 'Open DeepTutor.app'), { recursive: true, verbatimSymlinks: true });
+  await cp(bundle, path.join(dmgStage, 'Lorevia.app'), { recursive: true, verbatimSymlinks: true });
   await cp(path.join(built, 'LICENSES.chromium.html'), path.join(dmgStage, 'LICENSES.chromium.html'));
   await symlink('/Applications', path.join(dmgStage, 'Applications'));
   await rm(dmg, { force: true });
-  execFileSync('/usr/bin/hdiutil', ['create', '-volname', 'Open DeepTutor', '-srcfolder', dmgStage, '-fs', 'APFS', '-format', 'ULFO', dmg], { stdio: 'inherit' });
+  execFileSync('/usr/bin/hdiutil', ['create', '-volname', 'Lorevia', '-srcfolder', dmgStage, '-fs', 'APFS', '-format', 'ULFO', dmg], { stdio: 'inherit' });
   await rm(dmgStage, { recursive: true, force: true });
   return [bundle, dmg];
 }

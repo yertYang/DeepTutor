@@ -772,7 +772,7 @@ function Disclosure({
           <ChevronRight className="h-3 w-3" />
         )}
         {label}
-        <span className="opacity-60">·&nbsp;{body.length}</span>
+        <span className="opacity-60">{"·\u00a0"}{body.length}</span>
       </button>
       {open && (
         <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap break-words rounded bg-[var(--muted)]/40 px-2 py-1.5 font-mono text-[10.5px] text-[var(--foreground)]">

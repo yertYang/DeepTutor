@@ -16,6 +16,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { Toggle } from "@/components/settings/Toggle";
+import { PRODUCT_RELEASES_URL, PRODUCT_REPOSITORY_URL } from "@/lib/product";
 import {
   SettingRow,
   SettingSection,
@@ -25,6 +26,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Button from "@/components/ui/Button";
 import {
   checkAppUpdate,
+  AppUpdateUnavailableError,
   fetchAppUpdateJob,
   fetchAppUpdateStatus,
   requestAppUpdate,
@@ -68,15 +70,25 @@ export default function AboutSettingsPage() {
   const [requesting, setRequesting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState("");
+  const [unavailable, setUnavailable] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const next = await fetchAppUpdateStatus();
       setStatus(next);
+      setUnavailable(false);
       setLiveChecks({ enabled: next.check_enabled });
       setJob(next.job);
       setError(next.check_error || "");
     } catch (cause) {
+      if (cause instanceof AppUpdateUnavailableError) {
+        setStatus(null);
+        setJob(null);
+        setUnavailable(true);
+        setError("");
+        return;
+      }
+      setUnavailable(false);
       setError(
         cause instanceof Error
           ? cause.message
@@ -264,6 +276,15 @@ export default function AboutSettingsPage() {
         </div>
       </section>
 
+      <SettingSection title={t("Download desktop app")}>
+        <ResourceRow
+          title={t("Download desktop app")}
+          description={t("Choose macOS Apple Silicon, macOS Intel, or Windows x64 in the release assets. If no installer is listed, use the source installation guide.")}
+          href={PRODUCT_RELEASES_URL}
+          icon={<Download className="h-4 w-4" />}
+        />
+      </SettingSection>
+
       {error && (
         <div className="mb-7 flex items-start gap-2 border-l-2 border-red-500/70 py-1 pl-3 text-[12.5px] leading-relaxed text-red-600 dark:text-red-400">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
@@ -271,12 +292,18 @@ export default function AboutSettingsPage() {
         </div>
       )}
 
+      {unavailable && (
+        <p role="status" className="mb-7 text-[13px] text-[var(--muted-foreground)]">
+          {t("Automatic updates are not available in this installation. Download releases manually.")}
+        </p>
+      )}
+
       <SettingSection title={t("Software")}>
         <SettingRow
           title={t("Current version")}
           control={<CodeValue value={currentVersion} />}
         />
-        <SettingRow
+        {status && <SettingRow
           title={t("Installation")}
           description={t(
             status?.installation.reason || "How DeepTutor is installed here.",
@@ -286,8 +313,8 @@ export default function AboutSettingsPage() {
               {t(INSTALLATION_LABELS[installMode])}
             </span>
           }
-        />
-        <SettingRow
+        />}
+        {status && <SettingRow
           title={t("Release channel")}
           description={t(
             "Only stable, published DeepTutor releases are considered.",
@@ -297,10 +324,10 @@ export default function AboutSettingsPage() {
               {t("Stable")}
             </span>
           }
-        />
+        />}
       </SettingSection>
 
-      <SettingSection
+      {status && <SettingSection
         title={t("Updates")}
         description={t(
           "Version checks are cached for 24 hours. DeepTutor never installs an update without confirmation.",
@@ -401,19 +428,19 @@ export default function AboutSettingsPage() {
             )}
           </div>
         )}
-      </SettingSection>
+      </SettingSection>}
 
       <SettingSection title={t("Project")}>
         <ResourceRow
           title={t("GitHub")}
           description={t("Source code, issues, and contributions")}
-          href="https://github.com/HKUDS/DeepTutor"
+          href={PRODUCT_REPOSITORY_URL}
           icon={<Github className="h-4 w-4" />}
         />
         <ResourceRow
           title={t("Documentation")}
           description={t("Installation, configuration, and guides")}
-          href="https://docs.deeptutor.info"
+          href={`${PRODUCT_REPOSITORY_URL}#快速开始`}
           icon={<ArrowUpRight className="h-4 w-4" />}
         />
       </SettingSection>

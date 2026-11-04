@@ -14,6 +14,7 @@ import { useCollapsiblePanel } from "@/hooks/useCollapsiblePanel";
 import KbDocumentList from "./KbDocumentList";
 import KbFilePreview from "./KbFilePreview";
 import KbVisualCoverage from "./KbVisualCoverage";
+import NativeKnowledgeReader from "./NativeKnowledgeReader";
 
 interface KbFilesTabProps {
   kb: KnowledgeBase;
@@ -26,7 +27,13 @@ interface KbFilesTabProps {
  * `/knowledge-bases`) and this file list can be collapsed to icon-only strips
  * to reclaim horizontal space for the actual preview content.
  */
-export default function KbFilesTab({ kb, task }: KbFilesTabProps) {
+export default function KbFilesTab(props: KbFilesTabProps) {
+  return props.kb.metadata?.rag_provider === "native_lexical"
+    ? <NativeKnowledgeReader kbName={knowledgeBaseRef(props.kb)} revision={props.task?.executing ? 1 : 0} />
+    : <LegacyKbFilesTab {...props} />;
+}
+
+function LegacyKbFilesTab({ kb, task }: KbFilesTabProps) {
   const kbRef = knowledgeBaseRef(kb);
   const [selectedFile, setSelectedFile] = useState<KnowledgeBaseFile | null>(
     null,

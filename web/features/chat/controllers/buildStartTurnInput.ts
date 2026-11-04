@@ -31,7 +31,10 @@ function invalid(message: string): never {
 }
 
 function capabilityConfig(input: StartTurnInput): Record<string, unknown> {
-  const config = input.capabilityConfig ?? {};
+  // Composer reuse preferences belong to the local request snapshot. The
+  // chosen knowledge bases already travel in the typed knowledge_bases field;
+  // these UI flags are not capability options understood by the native server.
+  const { _resource_reuse, _persistent_knowledge_bases, ...config } = input.capabilityConfig ?? {};
   const allowed = input.allowedCapabilityConfigKeys
     ? new Set(input.allowedCapabilityConfigKeys)
     : null;

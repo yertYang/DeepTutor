@@ -142,6 +142,7 @@ export function buildSubmitUserReply(input: {
   turnId: string;
   text?: string;
   answers?: UserAnswer[];
+  toolCallId?: string;
   commandId?: string;
 }): SubmitUserReplyCommand {
   if (input.text === undefined && !input.answers?.length) {
@@ -152,6 +153,7 @@ export function buildSubmitUserReply(input: {
     turn_id: id(input.turnId, "turn_id"),
     text: input.text,
     answers: input.answers,
+    tool_call_id: input.toolCallId === undefined ? undefined : id(input.toolCallId, "tool_call_id"),
     command_id: commandId(input.commandId),
     protocol_version: PROTOCOL_VERSION,
   };

@@ -39,7 +39,7 @@ const Network = dynamic(
   },
 );
 const Workspace = dynamic(
-  () => import("@/features/settings/sections/WorkspaceSettingsSection"),
+  () => import("@/features/settings/sections/NativeWorkspaceSettingsSection"),
   {
     loading,
   },

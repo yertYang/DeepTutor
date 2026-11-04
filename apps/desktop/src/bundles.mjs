@@ -70,18 +70,18 @@ export async function installBundle(manifestFile, root, publicKey, progress = ()
 }
 
 async function checkLayout(root) {
-  const { python, node } = runtimeLayout();
-  for (const relative of [python, node, 'core/deeptutor_cli/main.py', 'web/server.js']) {
+  const { server, node } = runtimeLayout();
+  for (const relative of [server, node, 'core/VERSION', 'web/server.js']) {
     await access(path.join(root, relative));
   }
 }
 
 export function bundleConfig(destination, runtimeHome, runtimeId) {
-  const { python, node } = runtimeLayout();
+  const { server, node } = runtimeLayout();
   return {
     schemaVersion: 1, mode: 'bundled', runtimeId,
     sourcePath: path.join(destination, 'core'),
-    pythonPath: path.join(destination, python),
+    serverPath: path.join(destination, server),
     nodePath: path.join(destination, node),
     webPath: path.join(destination, 'web'), runtimeHome,
   };

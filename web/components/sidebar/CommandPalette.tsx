@@ -234,7 +234,7 @@ export function CommandPalette({
         <div className="dt-palette-hints" aria-hidden>
           <span><kbd>↑</kbd><kbd>↓</kbd> {t('navigation.paletteSelect')}</span>
           <span><kbd>↵</kbd> {t('navigation.paletteOpen')}</span>
-          <span><kbd>esc</kbd> {t('navigation.paletteClose')}</span>
+          <span><kbd>{t("Esc")}</kbd> {t('navigation.paletteClose')}</span>
         </div>
       </div>
     </div>,

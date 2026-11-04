@@ -1,5 +1,7 @@
 "use client";
 
+import { BRAND_ASSETS, PRODUCT_NAME } from "@/lib/product";
+
 import { COMMAND_CONFIRMATION_FAILED } from "@/features/chat/transport/command-delivery";
 
 import { ResourceReuseContext, useResourceReusePolicy } from "@/components/chat/home/ResourceReuse";
@@ -12,6 +14,7 @@ import { useChatWorkspaces } from "@/hooks/useChatWorkspaces";
 import { useComposerResources } from "@/hooks/useComposerResources";
 import { useActiveWorkspaceId } from "@/hooks/useActiveWorkspaceId";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import {
   type KeyboardEvent,
   useCallback,
@@ -2719,9 +2722,9 @@ export default function ChatWorkspace() {
                 // window leaves the greeting no room.
                 <div className="flex w-full flex-1 min-h-0 items-end justify-center overflow-hidden pb-14 animate-fade-in px-6">
                   <div className="w-full max-w-[960px] flex items-center justify-center gap-4">
-                    <img
-                      src="/brand/black-logo.png"
-                      alt="DeepTutor"
+                    <Image
+                      src={BRAND_ASSETS.monoLogo}
+                      alt={PRODUCT_NAME}
                       width={40}
                       height={40}
                       className="h-10 w-10 select-none dark:invert"
@@ -2871,7 +2874,7 @@ export default function ChatWorkspace() {
                         ? t("This unsent message could not be saved in your browser. Copy it before leaving this page.")
                         : state.submissionNeedsReview
                         ? t("Message text was saved, but its attachments or settings could not be restored. Copy it and send again.")
-                        : t("Couldn't reach the server. Please check your connection and retry.")}
+                        : state.submissionError || t("Couldn't reach the server. Please check your connection and retry.")}
                     </span>
                     {!state.submissionNeedsReview ? (
                       <button

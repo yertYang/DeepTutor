@@ -49,6 +49,19 @@
   padding: 0 10px;
   color: var(--muted-foreground);
 }
+.dt-native-note-topbar {
+  height: auto;
+  min-height: 44px;
+  flex-wrap: wrap;
+  padding-block: 6px;
+}
+.dt-native-note-workspace .dt-note-document > label,
+.dt-native-note-workspace .dt-note-editor {
+  padding-inline: 24px;
+}
+@media (max-width: 767px) {
+  .dt-native-note-workspace .dt-note-page-tree { display: none; }
+}
 .dt-note-icon-button {
   display: inline-flex;
   flex-shrink: 0;

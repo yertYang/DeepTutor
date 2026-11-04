@@ -600,36 +600,12 @@ export function repairMalformedStrongEmphasis(content: string): string {
   return fenced.restore(math.restore(inline.restore(repaired)));
 }
 
-// Handle only standalone italic/strong runs. Triple-star runs can represent nested
-// emphasis and require full delimiter-run parsing, so leave them untouched.
-const EMPHASIS_DELIMITER_REGEX = /(?<!\*)\*\*(?!\*)|(?<!\*)\*(?!\*)/g;
-
 function isNormalEmphasisCharacter(value: string | undefined): boolean {
   return Boolean(value && /[\p{L}\p{N}]/u.test(value));
 }
 
 function isPunctuationOrSymbol(value: string | undefined): boolean {
   return Boolean(value && /[\p{P}\p{S}]/u.test(value));
-}
-
-function isCjkCharacter(value: string | undefined): boolean {
-  return Boolean(value && value >= "\u4e00" && value <= "\u9fff");
-}
-
-function firstNonWhitespaceAfter(
-  line: string,
-  index: number,
-): string | undefined {
-  return Array.from(line.slice(index)).find((value) => !/\s/u.test(value));
-}
-
-function lastNonWhitespaceBefore(
-  line: string,
-  index: number,
-): string | undefined {
-  return Array.from(line.slice(0, index))
-    .reverse()
-    .find((value) => !/\s/u.test(value));
 }
 
 function canOpenEmphasis(line: string, index: number, marker: string): boolean {

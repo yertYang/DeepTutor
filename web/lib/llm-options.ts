@@ -5,7 +5,7 @@ import type { LLMSelection } from "@/features/chat/model/protocol";
 const LLM_OPTIONS_CACHE_KEY = "llm-options:list";
 const DEFAULT_LLM_OPTIONS_TIMEOUT_MS = 30_000;
 
-export interface LLMOption extends LLMSelection {
+export interface LLMOption extends Omit<LLMSelection, "reasoning_effort"> {
   profile_name: string;
   model_name: string;
   model: string;
@@ -24,14 +24,16 @@ export interface LLMOptionsResponse {
   options: LLMOption[];
 }
 
-export function llmSelectionKey(selection: LLMSelection | null | undefined) {
+type ModelIdentity = Pick<LLMSelection, "profile_id" | "model_id">;
+
+export function llmSelectionKey(selection: ModelIdentity | null | undefined) {
   if (!selection?.profile_id || !selection.model_id) return "";
   return `${selection.profile_id}:${selection.model_id}`;
 }
 
 export function sameLLMSelection(
-  a: LLMSelection | null | undefined,
-  b: LLMSelection | null | undefined,
+  a: ModelIdentity | null | undefined,
+  b: ModelIdentity | null | undefined,
 ) {
   return llmSelectionKey(a) === llmSelectionKey(b);
 }

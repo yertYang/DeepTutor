@@ -9,7 +9,7 @@ import type { LearningKind, LearningSources } from '@/lib/learning-dashboard'
 
 const CACHE_KEY = 'navigation:learning-index'
 type LearningIndex = { sources: LearningSources; failed: LearningKind[] }
-const EMPTY: LearningSources = { books: [], mastery: [], reading: [], watching: [], practice: [] }
+const EMPTY: LearningSources = { books: [], mastery: [], reading: [], watching: [], practice: [], native: [] }
 export function useLearningIndex(enabled = true) {
   const pathname = usePathname()
   const [sources, setSources] = useState<LearningSources>(
@@ -49,11 +49,11 @@ export function useLearningIndex(enabled = true) {
             previous =>
               Object.fromEntries(
                 Object.keys(EMPTY).map(key => {
-                  const kind = key as LearningKind
+                  const kind = key as keyof LearningSources
                   const rows = payload.sources[kind] ?? []
                   return [
                     kind,
-                    payload.failed.includes(kind) && !rows.length ? previous[kind] : rows,
+                    payload.failed.includes(kind as LearningKind) && !rows.length ? previous[kind] : rows,
                   ]
                 })
               ) as unknown as LearningSources

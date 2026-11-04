@@ -1,12 +1,13 @@
-; Open DeepTutor for Windows installer. Built by package.mjs, which defines
+; Lorevia for Windows installer. Built by package.mjs, which defines
 ; SOURCE (packaged app folder), OUTFILE, ICON, VERSION and FILEVERSION.
 ; Installs for the current user only, so no administrator prompt.
 
 Unicode true
 !include "MUI2.nsh"
 
-!define APP "Open DeepTutor"
-!define EXE "Open DeepTutor.exe"
+!define APP "Lorevia"
+!define EXE "Lorevia.exe"
+; Preserve installer identity for upgrades.
 !define REG "Software\Open DeepTutor"
 !define UNINSTALL "Software\Microsoft\Windows\CurrentVersion\Uninstall\Open DeepTutor"
 
@@ -16,12 +17,12 @@ InstallDir "$LOCALAPPDATA\Programs\${APP}"
 InstallDirRegKey HKCU "${REG}" "InstallDir"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
-BrandingText "Open DeepTutor for Windows v${VERSION}"
+BrandingText "Lorevia for Windows v${VERSION}"
 
 VIProductVersion "${FILEVERSION}"
 VIAddVersionKey "ProductName" "${APP}"
-VIAddVersionKey "FileDescription" "Open DeepTutor for Windows v${VERSION} Setup"
-VIAddVersionKey "CompanyName" "HKUDS"
+VIAddVersionKey "FileDescription" "Lorevia for Windows v${VERSION} Setup"
+VIAddVersionKey "CompanyName" "Lorevia contributors"
 VIAddVersionKey "LegalCopyright" "Copyright HKUDS. Licensed under Apache-2.0."
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${FILEVERSION}"
@@ -44,6 +45,9 @@ VIAddVersionKey "FileVersion" "${FILEVERSION}"
   RMDir /r "$INSTDIR\resources"
   RMDir /r "$INSTDIR\locales"
   Delete "$INSTDIR\${EXE}"
+  Delete "$INSTDIR\Open DeepTutor.exe"
+  ; Remove the preceding brand's executable when upgrading in place.
+  Delete "$INSTDIR\砚知舟.exe"
   Delete "$INSTDIR\d3dcompiler_47.dll"
   Delete "$INSTDIR\dxcompiler.dll"
   Delete "$INSTDIR\electron_wer.dll"
@@ -67,13 +71,19 @@ Section
   ; Replaces the previous version, including its bundled core.
   !insertmacro RemoveAppFiles
   File /r "${SOURCE}\*"
+  Delete "$SMPROGRAMS\Open DeepTutor.lnk"
+  Delete "$DESKTOP\Open DeepTutor.lnk"
+  Delete "$INSTDIR\Uninstall Open DeepTutor.exe"
+  Delete "$SMPROGRAMS\砚知舟.lnk"
+  Delete "$DESKTOP\砚知舟.lnk"
+  Delete "$INSTDIR\Uninstall 砚知舟.exe"
   WriteUninstaller "$INSTDIR\Uninstall ${APP}.exe"
   CreateShortcut "$SMPROGRAMS\${APP}.lnk" "$INSTDIR\${EXE}"
   CreateShortcut "$DESKTOP\${APP}.lnk" "$INSTDIR\${EXE}"
   WriteRegStr HKCU "${REG}" "InstallDir" "$INSTDIR"
-  WriteRegStr HKCU "${UNINSTALL}" "DisplayName" "Open DeepTutor for Windows"
+  WriteRegStr HKCU "${UNINSTALL}" "DisplayName" "Lorevia for Windows"
   WriteRegStr HKCU "${UNINSTALL}" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKCU "${UNINSTALL}" "Publisher" "HKUDS"
+  WriteRegStr HKCU "${UNINSTALL}" "Publisher" "Lorevia contributors"
   WriteRegStr HKCU "${UNINSTALL}" "DisplayIcon" "$INSTDIR\${EXE}"
   WriteRegStr HKCU "${UNINSTALL}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNINSTALL}" "UninstallString" '"$INSTDIR\Uninstall ${APP}.exe"'

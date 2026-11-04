@@ -55,6 +55,6 @@ export async function readMemory(
   }
   const text = values[0]
     ? values[0] + "\n"
-    : "(No memory available — interact with DeepTutor and update from the Memory page to build one.)";
+    : "(No memory available — interact with Lorevia and update from the Memory page to build one.)";
   return result(text, { char_count: [...text].length });
 }

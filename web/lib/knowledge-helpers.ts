@@ -350,7 +350,9 @@ export type KbDetailSection = (typeof KB_DETAIL_SECTIONS)[number];
  * does have is the devices that feed it. Every other KB has the reverse.
  */
 export const kbDetailSections = (kb: KnowledgeBase): KbDetailSection[] =>
-  isMarginNoteKb(kb)
+  kb.metadata?.rag_provider === "native_lexical"
+    ? ["files", "add"]
+    : isMarginNoteKb(kb)
     ? ["devices", "settings"]
     : kb.metadata?.type === "kiwix"
       ? ["kiwix", "settings"]
@@ -360,7 +362,7 @@ export const kbDetailSections = (kb: KnowledgeBase): KbDetailSection[] =>
 
 /** Local source folders belong to ordinary, DeepTutor-managed indexed KBs. */
 export const kbSupportsLinkedFolders = (kb: KnowledgeBase): boolean =>
-  !isMarginNoteKb(kb) && !kb.metadata?.type;
+  !isMarginNoteKb(kb) && !kb.metadata?.type && kb.metadata?.rag_provider !== "native_lexical";
 
 /** The retrieval engine a KB is bound to. Connected vaults badge by source. */
 export const kbProvider = (kb: KnowledgeBase): string => {

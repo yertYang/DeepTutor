@@ -1,128 +1,121 @@
-import { apiFetch, apiUrl } from "@/lib/api";
+import { apiFetch, apiUrl } from '@/lib/api'
+import { activeWorkspaceId } from '@/lib/workspace-scope'
+import { browserStorage } from '@/shared/storage'
 
-const BASE = "/api";
+const BASE = '/api'
 
 export interface CoWriterDocumentSummary {
-  id: string;
-  title: string;
-  created_at: number;
-  updated_at: number;
-  preview: string;
+  id: string
+  title: string
+  created_at: number
+  updated_at: number
+  preview: string
 }
 
 export interface CoWriterDocument {
-  id: string;
-  title: string;
-  content: string;
-  created_at: number;
-  updated_at: number;
+  id: string
+  title: string
+  content: string
+  created_at: number
+  updated_at: number
 }
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Request failed (${res.status}): ${text || res.statusText}`,
-    );
+    const text = await res.text().catch(() => '')
+    throw new Error(`Request failed (${res.status}): ${text || res.statusText}`)
   }
-  return res.json() as Promise<T>;
+  return res.json() as Promise<T>
 }
 
-export async function listCoWriterDocuments(): Promise<
-  CoWriterDocumentSummary[]
-> {
+export async function listCoWriterDocuments(): Promise<CoWriterDocumentSummary[]> {
   const res = await apiFetch(apiUrl(`${BASE}/documents`), {
-    cache: "no-store",
-  });
-  const data = await jsonOrThrow<{ documents: CoWriterDocumentSummary[] }>(res);
-  return Array.isArray(data?.documents) ? data.documents : [];
+    cache: 'no-store',
+  })
+  const data = await jsonOrThrow<{ documents: CoWriterDocumentSummary[] }>(res)
+  return Array.isArray(data?.documents) ? data.documents : []
 }
 
 export async function createCoWriterDocument(payload?: {
-  title?: string | null;
-  content?: string;
+  title?: string | null
+  content?: string
 }): Promise<CoWriterDocument> {
   const res = await apiFetch(apiUrl(`${BASE}/documents`), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       title: payload?.title ?? null,
-      content: payload?.content ?? "",
+      content: payload?.content ?? '',
     }),
-  });
-  return jsonOrThrow<CoWriterDocument>(res);
+  })
+  return jsonOrThrow<CoWriterDocument>(res)
 }
 
-export async function getCoWriterDocument(
-  docId: string,
-): Promise<CoWriterDocument> {
-  const res = await apiFetch(
-    apiUrl(`${BASE}/documents/${encodeURIComponent(docId)}`),
-    {
-      cache: "no-store",
-    },
-  );
-  return jsonOrThrow<CoWriterDocument>(res);
+export async function getCoWriterDocument(docId: string): Promise<CoWriterDocument> {
+  const res = await apiFetch(apiUrl(`${BASE}/documents/${encodeURIComponent(docId)}`), {
+    cache: 'no-store',
+  })
+  return jsonOrThrow<CoWriterDocument>(res)
 }
 
 export async function updateCoWriterDocument(
   docId: string,
-  payload: { title?: string | null; content?: string | null },
+  payload: { title?: string | null; content?: string | null }
 ): Promise<CoWriterDocument> {
-  const res = await apiFetch(
-    apiUrl(`${BASE}/documents/${encodeURIComponent(docId)}`),
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: payload.title ?? null,
-        content: payload.content ?? null,
-      }),
-    },
-  );
-  return jsonOrThrow<CoWriterDocument>(res);
+  const res = await apiFetch(apiUrl(`${BASE}/documents/${encodeURIComponent(docId)}`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: payload.title ?? null,
+      content: payload.content ?? null,
+    }),
+  })
+  return jsonOrThrow<CoWriterDocument>(res)
 }
 
 export async function deleteCoWriterDocument(docId: string): Promise<boolean> {
-  const res = await apiFetch(
-    apiUrl(`${BASE}/documents/${encodeURIComponent(docId)}`),
-    {
-      method: "DELETE",
-    },
-  );
-  const data = await jsonOrThrow<{ deleted: boolean }>(res);
-  return Boolean(data?.deleted);
+  const res = await apiFetch(apiUrl(`${BASE}/documents/${encodeURIComponent(docId)}`), {
+    method: 'DELETE',
+  })
+  const data = await jsonOrThrow<{ deleted: boolean }>(res)
+  return Boolean(data?.deleted)
 }
 
-export async function importCoWriterDocx(
-  file: File,
-): Promise<CoWriterDocument> {
-  const body = new FormData();
-  body.append("file", file);
-  const res = await apiFetch(apiUrl(`${BASE}/documents/import/docx`), {
-    method: "POST",
-    body,
-  });
-  return jsonOrThrow<CoWriterDocument>(res);
+export async function importCoWriterDocx(file: File): Promise<CoWriterDocument> {
+  if (!file.name.toLowerCase().endsWith('.docx') || file.size > 16 * 1024 * 1024)
+    throw new Error('Choose a DOCX file up to 16 MiB.')
+  const digest = Array.from(
+    new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))
+  )
+    .map(value => value.toString(16).padStart(2, '0'))
+    .join('')
+  const key = 'deeptutor.note-import:' + activeWorkspaceId() + ':' + file.name + ':' + digest
+  const submission = browserStorage.readRaw('session', key) || crypto.randomUUID()
+  browserStorage.writeRaw('session', key, submission)
+  const body = new FormData()
+  body.append('file', file)
+  body.append('client_submission_id', submission)
+  const response = await apiFetch(apiUrl(BASE + '/documents/import/docx'), { method: 'POST', body })
+  const page = await jsonOrThrow<CoWriterDocument>(response)
+  browserStorage.removeRaw('session', key)
+  return page
 }
 
 export async function exportCoWriterDocx(payload: {
-  title: string;
-  content: string;
+  title: string
+  content: string
 }): Promise<Blob> {
   const res = await apiFetch(apiUrl(`${BASE}/documents/export/docx`), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      title: payload.title ?? "",
-      content: payload.content ?? "",
+      title: payload.title ?? '',
+      content: payload.content ?? '',
     }),
-  });
+  })
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Request failed (${res.status}): ${text || res.statusText}`,
-    );
+    const text = await res.text().catch(() => '')
+    throw new Error(`Request failed (${res.status}): ${text || res.statusText}`)
   }
-  return res.blob();
+  return res.blob()
 }

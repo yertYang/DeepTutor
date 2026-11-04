@@ -1,0 +1,50 @@
+name: Native application validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "rust/**"
+      - "Cargo.*"
+      - "VERSION"
+      - "scripts/native-study-acceptance.mjs"
+      - ".github/workflows/native-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Check Rust warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test native storage and lifecycle
+        run: cargo test --workspace --locked
+      - name: Build native HTTP service
+        run: cargo build --locked -p deeptutor-server --bin deeptutor-server
+      - name: Exercise isolated study workflows with a synthetic provider
+        env:
+          OCR_QA: ${{ runner.os == 'macOS' && '1' || '0' }}
+        run: node scripts/native-study-acceptance.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-acceptance-${{ matrix.runner }}
+          path: dist/native-study-acceptance/*.json
+          if-no-files-found: ignore

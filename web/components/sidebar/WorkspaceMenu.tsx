@@ -1,9 +1,11 @@
 'use client'
 
+import { BRAND_ASSETS, PRODUCT_RELEASES_URL } from "@/lib/product";
+
 import Image from 'next/image'
 import Link from 'next/link'
 import { useId, useState, type ReactNode } from 'react'
-import { Check, ChevronDown, Settings, Settings2 } from 'lucide-react'
+import { Check, ChevronDown, Download, Settings, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useMenuPopover } from '@/shared/ui/useMenuPopover'
 import Tooltip from '@/shared/ui/Tooltip'
@@ -18,7 +20,7 @@ export function WorkspaceGlyph({ name, general, size = 22 }: { name: string; gen
   if (general)
     return (
       <span aria-hidden className="dt-workspace-glyph is-general" style={{ width: size, height: size }}>
-        <Image src="/brand/color-logo.png" alt="" width={size} height={size} className="h-full w-full object-contain" />
+        <Image src={BRAND_ASSETS.logo} alt="" width={size} height={size} className="h-full w-full object-contain" />
       </span>
     )
   let hash = 0
@@ -127,6 +129,10 @@ export function WorkspaceMenu({
             <Settings size={16} strokeWidth={1.6} />
             <span className="flex-1">{t('Settings')}</span>
           </Link>
+          <a role="menuitem" href={PRODUCT_RELEASES_URL} target="_blank" rel="noopener noreferrer" onClick={close} className="dt-menu-item">
+            <Download size={16} strokeWidth={1.6} />
+            <span className="flex-1">{t('Download desktop app')}</span>
+          </a>
           {accountSlot ? <div className="dt-menu-slot">{accountSlot}</div> : null}
           <div className="dt-menu-divider" />
           <div className="dt-menu-footer">

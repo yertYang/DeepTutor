@@ -76,17 +76,17 @@ body:
     attributes:
       label: Additional Information
       description: |
-        - DeepTutor Version: e.g., v0.5.0
+        - DeepTutor Version: output of deeptutor --version
         - Operating System: e.g., macOS 14.0, Windows 11, Ubuntu 22.04
-        - Python Version: e.g., 3.11.0
-        - Node.js Version: e.g., 18.17.0
+        - Rust Version: output of rustc --version (source builds)
+        - Node.js Version: e.g., 22.x
         - Browser (if applicable): e.g., Chrome 120, Firefox 121
         - Related Issues: e.g., #1
         - Any other relevant information.
       value: |
         - DeepTutor Version:
         - Operating System:
-        - Python Version:
+        - Rust Version:
         - Node.js Version:
         - Browser (if applicable):
         - Related Issues:

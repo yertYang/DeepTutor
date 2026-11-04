@@ -1,6 +1,7 @@
 "use client";
 
 import { supportsSubmissionReplacement } from "@/lib/session-api";
+import { parseLLMSelection } from "@/lib/chat-model-selection";
 
 import { activeWorkspaceId } from "@/lib/workspace-scope";
 import {
@@ -83,7 +84,7 @@ import {
 import { reconcileTurnIds } from "@/lib/turn-reconcile";
 import { decideFailedTurnReplay, isFailedTurnVisible } from "@/lib/chat-resend";
 import { shouldAppendEventContent } from "@/lib/stream";
-import { hasPendingAskUserInMessages, pendingAskUserKeyInMessages } from "@/lib/ask-user-state";
+import { hasPendingAskUserInMessages, pendingAskUserKeyInMessages, pendingAskUserToolCallIdInMessages } from "@/lib/ask-user-state";
 import { notify } from "@/lib/notifications";
 import { forwardReaderAction } from "@/lib/reading-reader-action";
 import {
@@ -259,6 +260,7 @@ export interface ChatState {
   submissionNeedsReview: boolean;
   /** No browser storage accepted even the text. Copy before leaving this tab. */
   submissionNotSaved: boolean;
+  submissionError: string | null;
   /** Messages sent while a turn ran, oldest first. */
   queuedMessages: QueuedMessage[];
 }
@@ -381,6 +383,7 @@ export interface MessageItem {
   failedSubmission?: boolean;
   failedSubmissionNeedsReview?: boolean;
   failedSubmissionNotSaved?: boolean;
+  failedSubmissionError?: string;
   failedSubmissionId?: string;
   /** A backend failure with a saved user row and no assistant reply (#1570). */
   orphanedFailedTurn?: OrphanedFailedTurn;
@@ -573,6 +576,7 @@ function createSessionEntry(
     submissionFailed: false,
     submissionNeedsReview: false,
     submissionNotSaved: false,
+    submissionError: null,
     queuedMessages: [],
   };
 }
@@ -1224,6 +1228,7 @@ function reduce(state: ProviderState, action: Action): ProviderState {
           messages[messages.length - 1] = {
             ...candidate,
             failedSubmission: true,
+            failedSubmissionError: action.errorMessage,
           };
           return {
             ...state,
@@ -1855,14 +1860,7 @@ function asStringArray(value: unknown): string[] {
 }
 
 function asLLMSelection(value: unknown): LLMSelection | null {
-  const record = asRecord(value);
-  const profileId =
-    typeof record?.profile_id === "string" ? record.profile_id.trim() : "";
-  const modelId =
-    typeof record?.model_id === "string" ? record.model_id.trim() : "";
-  return profileId && modelId
-    ? { profile_id: profileId, model_id: modelId }
-    : null;
+  return parseLLMSelection(value);
 }
 
 function normalizeSelectedBranches(value: unknown): Record<string, number> {
@@ -2457,6 +2455,7 @@ export function ChatStateAdapterProvider({
           status: status as SessionRuntimeStatus,
           turnId: event.turn_id || null,
           submissionFailed: submissionRejected,
+          errorMessage: submissionRejected ? event.content : undefined,
         });
       }
     },
@@ -3554,6 +3553,7 @@ export function ChatStateAdapterProvider({
         {
           type: "submit_user_reply",
           turn_id: turnId,
+          tool_call_id: pendingAskUserToolCallIdInMessages(session.messages, turnId),
         };
       if (typeof reply === "string") {
         message.text = reply;
@@ -3807,6 +3807,7 @@ export function ChatStateAdapterProvider({
         const tail = current.messages[current.messages.length - 1];
         return tail?.role === "user" && tail.failedSubmissionNotSaved === true;
       })(),
+      submissionError: current.messages.at(-1)?.failedSubmissionError ?? null,
     };
   }, [state]);
 

@@ -83,7 +83,7 @@ export function TurnCoordinationSettings({
             }
           >
             <option value="memory">{t("In process")}</option>
-            <option value="redis">Redis</option>
+            <option value="redis">{t("Redis")}</option>
           </select>
         </Field>
       </div>

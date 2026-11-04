@@ -128,7 +128,7 @@ export function GeminiGlyph({ size = 16, ...props }: GlyphProps) {
 }
 
 // Exact upstream brand assets, kept as local files so agent menus also work
-// offline. Sources are documented in public/agent-icons/README.md.
+// offline. Sources are documented in THIRD_PARTY_NOTICES.txt at the repository root.
 export function KimiGlyph({ size = 16, ...props }: GlyphProps) {
   return (
     <OfficialAssetGlyph src="/agent-icons/kimi.svg" size={size} {...props} />

@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Image as ImageIcon,
   Lightbulb,
+  ListChecks,
   MessageSquare,
   Microscope,
   PenLine,
@@ -80,6 +81,14 @@ export const CHAT_CAPABILITIES: ChatCapabilityDef[] = [
       "imagegen",
       "videogen",
     ],
+    defaultTools: [],
+  },
+  {
+    value: "test_cases",
+    label: "Write Test Cases",
+    description: "Write structured test cases and verify website behavior",
+    icon: ListChecks,
+    allowedTools: ["web_search"],
     defaultTools: [],
   },
   {

@@ -51,8 +51,7 @@ export async function stageWeb(sourcePath, cachePath) {
   });
   await symlink(path.join(source, 'node_modules'), path.join(target, 'node_modules'), WINDOWS ? 'junction' : 'dir');
   // Next's version display reads this sibling file. It is a disposable runtime cache.
-  await mkdir(path.join(cachePath, 'deeptutor'), { recursive: true });
-  await cp(path.join(sourcePath, 'deeptutor', '__version__.py'), path.join(cachePath, 'deeptutor', '__version__.py'));
+  await cp(path.join(sourcePath, 'VERSION'), path.join(cachePath, 'VERSION'));
   return target;
 }
 
@@ -76,8 +75,8 @@ export class SourceRuntime extends EventEmitter {
         this.update({ phase: 'ready', step: 'attached', url: config.url, owned: false });
         return;
       }
-      for (const file of [config.pythonPath, config.nodePath]) await access(file, constants.X_OK);
-      await access(path.join(config.sourcePath, 'deeptutor_cli', 'main.py'));
+      for (const file of [config.serverPath, config.nodePath]) await access(file, constants.X_OK);
+      await access(path.join(config.sourcePath, 'VERSION'));
       if (config.mode === 'source') await access(path.join(config.sourcePath, 'web', 'node_modules', 'next', 'dist', 'bin', 'next'));
       else await access(path.join(config.webPath, 'server.js'));
       await mkdir(config.runtimeHome, { recursive: true, mode: 0o700 });
@@ -88,23 +87,16 @@ export class SourceRuntime extends EventEmitter {
       const url = `http://127.0.0.1:${frontendPort}`;
       const env = {
         ...process.env,
-        PATH: [path.dirname(config.nodePath), path.dirname(config.pythonPath), process.env.PATH].filter(Boolean).join(path.delimiter),
-        PYTHONPATH: config.sourcePath,
-        PYTHONUNBUFFERED: '1',
-        PYTHONDONTWRITEBYTECODE: '1',
-        // Windows pipes otherwise use the legacy code page. Initialization
-        // prints the data path, which can contain names outside that encoding.
-        PYTHONUTF8: '1',
-        PYTHONIOENCODING: 'utf-8',
+        PATH: [path.dirname(config.nodePath), path.dirname(config.serverPath), process.env.PATH].filter(Boolean).join(path.delimiter),
         DEEPTUTOR_HOME: config.runtimeHome,
+        DEEPTUTOR_BROWSER_NODE: config.nodePath,
+        DEEPTUTOR_BROWSER_WORKER: path.join(config.sourcePath, config.mode === 'bundled' ? 'browser-testing' : 'packages/browser-testing', 'worker.mjs'),
+        ...(config.mode === 'bundled' ? { PLAYWRIGHT_BROWSERS_PATH: path.join(config.sourcePath, 'browser-testing/browsers') } : {}),
         BACKEND_PORT: String(backendPort), FRONTEND_PORT: String(frontendPort),
       };
       // A source adapter never hands environment mutation to the core's updater.
       delete env.DEEPTUTOR_LAUNCHER_PID;
       delete env.ELECTRON_RUN_AS_NODE;
-      delete env.PYTHONHOME;
-      await this.group.run(config.pythonPath, ['-m', 'deeptutor_cli.main', 'init', '--non-interactive', '--home', config.runtimeHome],
-        { cwd: config.runtimeHome, env });
       let auth = {};
       try { auth = JSON.parse(await readFile(path.join(config.runtimeHome, 'data/user/settings/auth.json'), 'utf8')); }
       catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -122,8 +114,8 @@ export class SourceRuntime extends EventEmitter {
       this.controller.signal.throwIfAborted();
       if (config.mode === 'source') await this.group.run(config.nodePath, [path.join(webPath, 'scripts/copy-pdfjs-assets.mjs')], { cwd: webPath, env });
       this.update({ step: 'startingCore' });
-      this.backend = this.group.spawn(config.pythonPath,
-        ['-m', 'deeptutor_cli.main', 'serve', '--host', '127.0.0.1', '--port', String(backendPort)],
+      this.backend = this.group.spawn(config.serverPath,
+        ['--home', config.runtimeHome, 'serve', '--host', '127.0.0.1', '--port', String(backendPort)],
         { cwd: config.runtimeHome, env });
       await waitReady(`${backendURL}/health/ready`, {
         signal: this.controller.signal, alive: () => this.group.alive(this.backend),
@@ -137,8 +129,7 @@ export class SourceRuntime extends EventEmitter {
         signal: this.controller.signal, timeout: 240000,
         alive: () => this.group.alive(this.frontend) && this.group.alive(this.backend),
       });
-      const versionFile = await readFile(path.join(config.sourcePath, 'deeptutor/__version__.py'), 'utf8');
-      const coreVersion = /__version__\s*=\s*['"]([^'"]+)/.exec(versionFile)?.[1] ?? 'dev';
+      const coreVersion = (await readFile(path.join(config.sourcePath, 'VERSION'), 'utf8')).trim();
       this.update({ phase: 'ready', step: 'ready', coreVersion, url, owned: true });
       for (const child of [this.backend, this.frontend]) {
         child.done.then(() => {

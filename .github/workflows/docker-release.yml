@@ -3,7 +3,7 @@ name: Docker Release
 # Triggered when a GitHub Release is published.
 # Builds a multi-platform Docker image and pushes it to GitHub Container Registry (GHCR).
 #
-# Image: ghcr.io/hkuds/deeptutor
+# Image: ghcr.io/<current owner>/<current repository>
 # Tags:
 #   - Version tag stripped of 'v' prefix (e.g. release v1.2.3 → image tag 1.2.3)
 #   - latest (always points to the most recently published release)
@@ -27,35 +27,13 @@ jobs:
       image_tag: ${{ steps.validate.outputs.image_tag }}
       is_stable: ${{ steps.validate.outputs.is_stable }}
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Require an image version tag
         id: validate
-        shell: python
-        run: |
-          import os
-          import re
-
-          tag = os.environ["RELEASE_TAG"]
-          pattern = (
-              r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
-              r"(?:(?:a|b|rc)(?:0|[1-9]\d*))?"
-              r"(?:\.post(?:0|[1-9]\d*))?"
-              r"(?:\.dev(?:0|[1-9]\d*))?"
-              r"(?:\+[0-9A-Za-z]+(?:[._-][0-9A-Za-z]+)*)?$"
-          )
-          if not re.fullmatch(pattern, tag):
-              raise SystemExit(
-                  f"Release tag {tag!r} is not an image version tag "
-                  "(expected vX.Y.Z with an optional suffix)."
-              )
-          # '+' is valid version metadata but not valid in an OCI tag.
-          image_tag = tag[1:].replace("+", "-")
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"image_tag={image_tag}\n")
-              output.write(
-                  "is_stable="
-                  + str(bool(re.fullmatch(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", tag))).lower()
-                  + "\n"
-              )
+        run: node scripts/validate-release-tag.mjs
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
 
@@ -89,7 +67,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/hkuds/deeptutor
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ needs.validate-release-tag.outputs.image_tag }}
             type=raw,value=latest,enable=${{ github.event.release.prerelease == false && needs.validate-release-tag.outputs.is_stable == 'true' }}
@@ -107,6 +85,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Use GitHub Actions cache to speed up repeated builds
-          # mode=max caches all intermediate layers (frontend-builder and python-base are expensive)
+          # Cache the Rust and frontend build stages as well as the final image.
           cache-from: type=gha
           cache-to: type=gha,mode=max

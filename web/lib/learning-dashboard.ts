@@ -15,6 +15,7 @@ import { sessionWorkspaceId } from '@/lib/session-api'
 export type LearningKind = 'books' | 'mastery' | 'reading' | 'watching' | 'practice'
 export type Located<T> = T & { content_workspace_id?: string; content_workspace_name?: string }
 export interface LearningSources {
+  native?: Located<{id:string;kind:string;title:string;created_at:number;updated_at:number}>[]
   books: Located<Book>[]
   mastery: Located<MasteryTopic>[]
   reading: Located<ReadingWorkspace>[]
@@ -24,6 +25,7 @@ export interface LearningSources {
 export interface LearningActivity {
   key: string
   kind: LearningKind
+  label?: string
   title: string
   href: string
   updatedAt: number
@@ -39,6 +41,15 @@ export function isWatchingSession(session: SessionSummary): boolean {
 /** Every activity across the surfaces, newest first. Archived paths are not work in progress. */
 export function allLearningActivity(sources: LearningSources): LearningActivity[] {
   return [
+    ...(sources.native ?? []).map(entry => ({
+      key: 'native:' + (entry.content_workspace_id || '') + ':' + entry.id,
+      kind: (entry.kind === 'deep_question' ? 'practice' : entry.kind === 'mastery_path' ? 'mastery' : 'reading') as LearningKind,
+      label: ({deep_question:'Practice questions',mastery_path:'Learning path',deep_research:'Research',note_ai:'AI note editing',memory_consolidate:'Memory consolidation'} as Record<string,string>)[entry.kind] || 'Study workspace',
+      title: entry.title,
+      href: scopedUrl('/learning/native?artifact_id=' + encodeURIComponent(entry.id),entry.content_workspace_id || ''),
+      updatedAt: entry.updated_at || entry.created_at,
+      createdAt: entry.created_at || entry.updated_at,
+    })),
     ...(sources.practice ?? []).map(entry => ({
       key: `practice:${entry.content_workspace_id || ''}:${entry.id}`,
       kind: 'practice' as const,

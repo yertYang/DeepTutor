@@ -1,15 +1,21 @@
-// Bare shell — each memory page owns its own padding + scroll behavior.
-// Hub uses `overflow-y-auto` with a max-width container; the L2/L3
-// workbench pages use a full-height flex column with internal scrolling
-// per pane (preview / LLM workspace) so the outer page never grows.
+'use client'
+
+import { usePathname } from 'next/navigation'
+import { useModules } from '@/hooks/useModules'
+import NativeMemoryWorkspace, { nativeMemoryTarget } from '@/components/memory/NativeMemoryWorkspace'
+
 export default function MemoryLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname() ?? '/memory'
+  const { modules } = useModules()
+  const target = nativeMemoryTarget(pathname)
+  const native = modules?.some(module => module.id === 'memory' && module.features?.native_documents)
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--background)]">
-      {children}
+      {native && target ? <NativeMemoryWorkspace key={target.join('/')} layer={target[0]} docKey={target[1]} /> : children}
     </main>
   );
 }

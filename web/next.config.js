@@ -76,16 +76,14 @@ process.env.NEXT_PUBLIC_API_BASE = NEXT_PUBLIC_API_BASE;
 process.env.NEXT_PUBLIC_AUTH_ENABLED = NEXT_PUBLIC_AUTH_ENABLED;
 
 // Resolve the build-time application version from the single source of
-// truth at ``deeptutor/__version__.py``. The Python file is parsed with a
-// small regex so the JS build does not need to execute Python.
+// truth at VERSION, shared by native and desktop builds.
 const APP_VERSION = (() => {
   try {
     const text = fs.readFileSync(
-      path.resolve(__dirname, "..", "deeptutor", "__version__.py"),
+      path.resolve(__dirname, "..", "VERSION"),
       "utf8",
     );
-    const match = text.match(/__version__\s*=\s*["']([^"']+)["']/);
-    if (match) return match[1];
+    if (/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(text.trim())) return text.trim();
   } catch {}
   return "";
 })();

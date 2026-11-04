@@ -223,7 +223,7 @@ export class ToolDispatcher {
     const ordinary = prepared
       .map((_, i) => i)
       .filter((i) => !rebind.includes(i) && !pauses.includes(i));
-    // Each Python compatibility operation re-resolves its scoped arguments at
+    // Each rebinding operation re-resolves its scoped arguments at
     // execution time, after any prior rebinding tool has completed.
     for (const index of rebind) outputs.set(index, await execute(index));
     await Promise.all(

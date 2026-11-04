@@ -2,6 +2,7 @@ import { CalendarDays } from 'lucide-react'
 import { LEARNING_HUB } from '@/lib/learning-routes'
 import {
   Bot,
+  Globe,
   GraduationCap,
   HeartHandshake,
   House,
@@ -87,6 +88,7 @@ export const PRIMARY_NAV: NavEntry[] = [
     tooltipKey: 'Agents tooltip',
     defaultCollapsed: true,
   },
+  { href: '/browser-testing', label: 'Browser testing', icon: Globe, defaultCollapsed: true },
 ]
 
 export const SECONDARY_NAV: NavEntry[] = [{ href: '/settings', label: 'Settings', icon: Settings }]

@@ -52,7 +52,10 @@ export interface AppUpdateStatus {
 export interface AppUpdateStatusSignal {
   status?: AppUpdateStatus;
   error: string;
+  unavailable?: boolean;
 }
+
+export class AppUpdateUnavailableError extends Error {}
 
 type AppUpdateStatusListener = (signal: AppUpdateStatusSignal) => void;
 
@@ -72,7 +75,10 @@ export function subscribeAppUpdateStatus(
 
 async function responseError(response: Response): Promise<Error> {
   try {
-    const payload = (await response.json()) as { detail?: unknown };
+    const payload = (await response.json()) as { detail?: unknown; error_code?: unknown };
+    if (response.status === 501 && payload.error_code === "not_migrated") {
+      return new AppUpdateUnavailableError("Automatic updates are not available in this installation. Download releases manually.");
+    }
     if (typeof payload.detail === "string") return new Error(payload.detail);
   } catch {
     // Fall through to the status-only message for non-JSON responses.
@@ -83,7 +89,8 @@ async function responseError(response: Response): Promise<Error> {
 async function readStatus(response: Response): Promise<AppUpdateStatus> {
   if (!response.ok) {
     const error = await responseError(response);
-    publishAppUpdateStatus({ error: error.message });
+    publishAppUpdateStatus({ error: error instanceof AppUpdateUnavailableError ? "" : error.message,
+      unavailable: error instanceof AppUpdateUnavailableError });
     throw error;
   }
   try {

@@ -1049,7 +1049,7 @@ type JobStatus = {
   message: string;
 };
 
-// Shared driver for the page's one-click background jobs (pip install / model
+// Shared driver for the page's background model
 // download). Mirrors the MinerU model-download UI: POST to start → poll a shared
 // cursor-based log filtered by `kind` → call onDone once on success. Only one
 // job runs server-side at a time, so the kind filter keeps each card's view to
@@ -1236,9 +1236,8 @@ function JobButton({
   );
 }
 
-// Packages are installed offline by the operator; this action only reloads metadata.
+// Unmigrated parsers remain unavailable in the native runtime.
 function NotInstalledSection({
-  engineId,
   title,
   onInstalled,
 }: {
@@ -1260,31 +1259,11 @@ function NotInstalledSection({
     }
   }
 
-  const commandClass = "mt-1 block whitespace-pre-wrap break-words rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-mono text-[11px] text-[var(--foreground)]";
-
   return (
     <SettingSection
       title={title}
-      description={t("This local parser is not installed. Choose the instructions for your server deployment; packages cannot be installed while DeepTutor is running.")}
+      description={t("This parser has not been migrated to the native runtime.")}
     >
-      <div className="space-y-4 px-1 pb-4 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
-        <div>
-          <h3 className="font-medium text-[var(--foreground)]">{t("Docker")}</h3>
-          <p>{t("Add this extra to DEEPTUTOR_EXTRAS in your existing deployment configuration, preserving other extras. Recreate the same service with its existing configuration and mounts.")}</p>
-          <code className={commandClass}>parse-{engineId}</code>
-          <p className="mt-1">{t("Startup reapplies extras. Installation failures do not stop the server: inspect startup logs, then recheck availability. Data mounts preserve user data, not installed Python packages.")}</p>
-        </div>
-        <div>
-          <h3 className="font-medium text-[var(--foreground)]">{t("Source checkout")}</h3>
-          <p>{t("Stop DeepTutor. Run from the checkout in the server's Python environment, then restart the same instance.")}</p>
-          <code className={commandClass}>python scripts/install_extras.py parse-{engineId}</code>
-        </div>
-        <div>
-          <h3 className="font-medium text-[var(--foreground)]">{t("Wheel installation")}</h3>
-          <p>{t("Stop DeepTutor. Run in the server's Python environment, then restart with the same runtime home. Do not run this over a source checkout.")}</p>
-          <code className={commandClass}>deeptutor module install parser-{engineId}</code>
-        </div>
-      </div>
       <SettingRow
         title={t("Recheck availability")}
         description={t("After restarting, refresh parser availability here. This does not install packages or apply pending settings.")}
