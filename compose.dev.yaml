@@ -1,0 +1,77 @@
+# Standalone development configuration: do not combine with compose.yaml.
+name: deeptutor-dev
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    init: true
+    ports:
+      - "127.0.0.1:${DEV_PORT:-3783}:3782"
+    mem_limit: ${DEV_MEMORY_LIMIT:-4g}
+    memswap_limit: ${DEV_MEMORY_LIMIT:-4g}
+    cpus: ${DEV_CPUS:-2}
+    environment:
+      DEEPTUTOR_HOME: /var/lib/deeptutor
+      DEEPTUTOR_API_BASE_URL: http://127.0.0.1:8002
+      BACKEND_PORT: "8002"
+      NEXT_PUBLIC_API_BASE: http://127.0.0.1:8002
+      NEXT_TELEMETRY_DISABLED: "1"
+      DEEPTUTOR_NEXT_DIST_DIR: .next-docker
+      DEEPTUTOR_DEV_HEAP_MB: ${DEV_HEAP_MB:-2048}
+      DEEPTUTOR_TURBO_MEMORY_MB: ${DEV_TURBO_MEMORY_MB:-768}
+      DEEPTUTOR_DEV_BUNDLER: ${DEV_BUNDLER:-webpack}
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      TZ: ${TZ:-UTC}
+    volumes:
+      - .:/workspace
+      - web-deps:/workspace/web/node_modules
+      - web-cache:/workspace/web/.next-docker
+      - browser-deps:/workspace/packages/browser-testing/node_modules
+      - cargo-target:/workspace/target
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - npm-cache:/root/.npm
+      - dev-data:/var/lib/deeptutor
+    develop:
+      watch:
+        # The bind mount supplies edits; restarting recompiles the backend.
+        # Frontend changes already use Next's normal HMR file watcher.
+        - action: restart
+          path: ./rust
+        - action: restart
+          path: ./Cargo.toml
+        - action: restart
+          path: ./Cargo.lock
+        - action: restart
+          path: ./web/package.json
+        - action: restart
+          path: ./web/package-lock.json
+        - action: restart
+          path: ./packages/browser-testing/package.json
+        - action: restart
+          path: ./packages/browser-testing/package-lock.json
+        - action: restart
+          path: ./scripts/docker-dev.sh
+        - action: rebuild
+          path: ./Dockerfile.dev
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "Promise.all([fetch('http://127.0.0.1:8002/health/ready'),fetch('http://127.0.0.1:3782/login')]).then(rs=>process.exit(rs.every(r=>r.ok)?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      start_period: 10m
+    stop_grace_period: 20s
+volumes:
+  web-deps:
+  web-cache:
+  browser-deps:
+  cargo-target:
+  cargo-registry:
+  cargo-git:
+  npm-cache:
+  dev-data:
