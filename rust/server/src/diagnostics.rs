@@ -218,10 +218,9 @@ async fn embedding(catalog: &Value) -> Result<Vec<Value>> {
     if let Some(dimension) = model["dimension"]
         .as_u64()
         .or_else(|| text(model, "dimension").parse().ok())
+        && model["send_dimensions"] == true
     {
-        if model["send_dimensions"] == true {
-            payload["dimensions"] = json!(dimension);
-        }
+        payload["dimensions"] = json!(dimension);
     }
     let response = crate::service_preview::request(&connection, "embeddings")?
         .json(&payload)

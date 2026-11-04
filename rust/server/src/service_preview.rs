@@ -166,7 +166,7 @@ async fn preview(
     } else {
         let (profile, model) = selection(&catalog, &service, &body)?;
         let connection = connection(&catalog, profile, model, &service)?;
-        let result = tokio::time::timeout(
+        tokio::time::timeout(
             Duration::from_secs(if service == "videogen" { 600 } else { 120 }),
             generate(&connection, model, &service, &prompt),
         )
@@ -177,8 +177,7 @@ async fn preview(
                 "timeout",
                 "Service preview timed out.",
             )
-        })??;
-        result
+        })??
     };
     Ok((
         [

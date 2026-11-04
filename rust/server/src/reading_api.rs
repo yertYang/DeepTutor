@@ -63,14 +63,14 @@ async fn list(
         if let Some(id) = settings.account_id.as_deref() {
             let root = settings.shared.as_ref().unwrap_or(&settings);
             let policy = crate::accounts_api::policy(root, &accounts.user(id)?)?;
-            if policy["reading"]["assigned_materials"].is_array() {
-                if let Some(items) = result["items"].as_array_mut() {
-                    items.retain(|item| {
-                        policy["reading"]["material_ids"]
-                            .as_array()
-                            .is_some_and(|ids| ids.iter().any(|id| id == &item["id"]))
-                    });
-                }
+            if policy["reading"]["assigned_materials"].is_array()
+                && let Some(items) = result["items"].as_array_mut()
+            {
+                items.retain(|item| {
+                    policy["reading"]["material_ids"]
+                        .as_array()
+                        .is_some_and(|ids| ids.iter().any(|id| id == &item["id"]))
+                });
             }
         }
         Ok(result)
@@ -92,10 +92,10 @@ async fn add(
             let mut grant = crate::accounts::grant(root, &id)?;
             let reading = &mut grant["learning_policy"]["reading"];
             if reading["assigned_materials"].is_array() {
-                if let Some(ids) = reading["material_ids"].as_array_mut() {
-                    if !ids.contains(&item) {
-                        ids.push(item);
-                    }
+                if let Some(ids) = reading["material_ids"].as_array_mut()
+                    && !ids.contains(&item)
+                {
+                    ids.push(item);
                 }
                 crate::config::write_json(&crate::accounts::grant_path(root, &id)?, &grant)?;
             }

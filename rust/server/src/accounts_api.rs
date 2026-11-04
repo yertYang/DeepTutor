@@ -166,20 +166,19 @@ async fn logout(State(app): State<App>, headers: HeaderMap) -> Result<Response> 
         .into_response())
 }
 fn admin_only(path: &str, method: &Method) -> bool {
+    let personal_setting = matches!(
+        path,
+        "/api/settings/ui"
+            | "/api/settings/llm-options"
+            | "/api/settings/voice-autoplay"
+            | "/api/settings/voice-math-speak"
+    ) || path.starts_with("/api/settings/workspace/registrations")
+        || (method == Method::GET && path == "/api/settings/catalog");
     path.starts_with("/api/system/update")
         || path.starts_with("/api/auth/users")
         || (path.starts_with("/api/multi-user/") && !crate::guardian_api::delegated_path(path))
         || path.starts_with("/api/settings/providers/")
-        || (path.starts_with("/api/settings/")
-            && !matches!(
-                path,
-                "/api/settings/ui"
-                    | "/api/settings/llm-options"
-                    | "/api/settings/voice-autoplay"
-                    | "/api/settings/voice-math-speak"
-            )
-            && !path.starts_with("/api/settings/workspace/registrations")
-            && !(method == Method::GET && path == "/api/settings/catalog"))
+        || (path.starts_with("/api/settings/") && !personal_setting)
         || path.starts_with("/api/browser-testing")
         || path == "/api/voice/config"
         || path == "/api/native/metrics"
