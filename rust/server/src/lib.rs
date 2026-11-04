@@ -15,6 +15,7 @@ pub mod oauth_web;
 pub mod provider;
 pub mod settings_api;
 pub mod store;
+mod voice;
 
 pub use application::Application;
 pub use error::{Error, Result};

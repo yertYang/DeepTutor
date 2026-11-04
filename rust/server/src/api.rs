@@ -34,6 +34,7 @@ pub fn router(app: App) -> Router {
         .merge(crate::client_api::router())
         .merge(crate::documents_api::router())
         .merge(crate::browser_testing_api::router())
+        .merge(crate::voice::router())
         .route("/health", get(health))
         .route("/health/ready", get(health))
         .route("/health/live", get(health))
@@ -180,6 +181,7 @@ async fn native_status() -> Json<Value> {
         "capability_tools":capability_tools,
         "context_tools":{"notebooks":["list_favorites","save_favorite"],"memory":["read_memory","write_memory"],"selected_knowledge_bases":["rag"],"optional":["web_search","browser_test"]},
         "browser_testing":{"declarative_cases":true,"screenshots":true,"playwright_export":true,"isolated_contexts":true},
+        "realtime_voice":{"provider":"personaplex","external_service_required":true,"languages":["en"],"audio_storage":false,"automatic_tools":false},
         "learning_features":{"authored_documents":true,"document_versions":true,"document_block_editor":true,"document_ai":true,"favorites_crud":true,"model_summary":true,"memory_documents":true,"memory_versions":true,"legacy_learning_import":true,"native_lexical_knowledge":true,"knowledge_binary_parsers":true,"knowledge_source_clips":true,"knowledge_ocr":crate::ocr::available(),"memory_consolidation":true,"memory_provenance_graph":true,"memory_cleanup_proposals":true},
         "client_transports":["websocket_v2","http_polling"],
         "database_backups":{"consistent_wal_snapshot":true,"schema_version":crate::backup::SCHEMA_VERSION},

@@ -302,3 +302,5 @@ dmypy.json
 
 # Synthetic bilingual OCR regression fixture.
 !rust/server/tests/fixtures/ocr.pdf
+# Generated Opus workers, rebuilt from the pinned production dependency.
+/web/public/voice-codecs/

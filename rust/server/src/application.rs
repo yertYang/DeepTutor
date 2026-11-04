@@ -90,6 +90,7 @@ pub struct Application {
     pub settings: Arc<Settings>,
     pub store: Store,
     pub browser_jobs: crate::browser_testing::Jobs,
+    pub(crate) voice: Arc<crate::voice::Runtime>,
     pub codex_login: crate::oauth_web::WebLogin,
     pub memory_maintenance: crate::memory_maintenance::Scheduler,
     pub changed: Notify,
@@ -110,6 +111,7 @@ impl Application {
         store.recover()?;
         Ok(Arc::new(Self {
             browser_jobs: Default::default(),
+            voice: Default::default(),
             codex_login: Default::default(),
             memory_maintenance: Default::default(),
             settings,

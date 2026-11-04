@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { configureTypeIncludes } from "./next-type-includes.mjs";
 import { copyPdfjsAssets } from "./copy-pdfjs-assets.mjs";
+import { copyVoiceAssets } from "./copy-voice-assets.mjs";
 
 const webRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -94,6 +95,7 @@ if (isEntry) {
   let result;
   try {
     copyPdfjsAssets();
+    copyVoiceAssets();
     // On Vercel (process.env.VERCEL === "1") do NOT force --webpack: the
     // post-build validator expects Turbopack's output layout and fails with
     // ENOENT routes-manifest-deterministic.json otherwise (see issue #1428).

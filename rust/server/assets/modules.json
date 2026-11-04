@@ -372,6 +372,25 @@
       "issues": [
         "Media viewing and reading conversations have not migrated to the native server."
       ]
+    },
+    {
+      "id": "realtime-voice",
+      "installed": true,
+      "enabled": true,
+      "ready": true,
+      "navigation": [
+        "/voice"
+      ],
+      "issues": [],
+      "features": {
+        "personaplex": true,
+        "external_service_required": true,
+        "languages": [
+          "en"
+        ],
+        "audio_storage": false,
+        "automatic_tools": false
+      }
     }
   ]
 }

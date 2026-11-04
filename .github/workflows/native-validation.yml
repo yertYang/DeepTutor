@@ -10,6 +10,8 @@ on:
       - "scripts/native-study-acceptance.mjs"
       - "scripts/native-reading-acceptance.mjs"
       - "scripts/desktop-releases.test.mjs"
+      - "scripts/desktop-media-permissions.test.mjs"
+      - "apps/desktop/src/media-permissions.mjs"
       - "web/lib/desktop-releases.ts"
       - ".github/workflows/native-validation.yml"
 
@@ -37,6 +39,8 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Check desktop download availability and asset validation
         run: node --experimental-strip-types --test scripts/desktop-releases.test.mjs
+      - name: Check desktop microphone permission boundaries
+        run: node --test scripts/desktop-media-permissions.test.mjs
       - name: Check Rust warnings
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test native storage and lifecycle

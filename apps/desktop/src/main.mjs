@@ -10,6 +10,7 @@ import { resolveLanguage, translate } from './i18n.mjs';
 import { WINDOWS, agentMarker, edition, targetId } from './platform.mjs';
 import { killTree } from './processes.mjs';
 import { createUpgradeBackup, restoreUpgradeBackup } from './upgrade.mjs';
+import { mediaPermissionPolicy } from './media-permissions.mjs';
 
 app.setName('Lorevia');
 if (WINDOWS) app.setAppUserModelId('org.yanzhizhou.desktop');
@@ -360,13 +361,16 @@ else {
   const coreSession = session.fromPartition('persist:deeptutor');
   // The web UI reads this marker to name the client, e.g. "Lorevia for MacOS with Apple Silicon".
   coreSession.setUserAgent(`${coreSession.getUserAgent()} ${agentMarker(app.getVersion())}`);
-  coreSession.setPermissionCheckHandler((_contents, permission) => permission === 'clipboard-sanitized-write');
-  coreSession.setPermissionRequestHandler(async (contents, permission, callback, details) => {
-    if (permission === 'clipboard-sanitized-write') return callback(true);
-    if (permission !== 'media' || contents !== view?.webContents || details.requestingUrl && !details.requestingUrl.startsWith(state.url + '/')) return callback(false);
-    const result = await dialog.showMessageBox(window, { type: 'question', message: t('mediaPrompt'), buttons: [t('deny'), t('allow')], defaultId: 0, cancelId: 0 });
-    callback(result.response === 1);
+  const media = mediaPermissionPolicy({
+    currentContents: () => view?.webContents,
+    currentUrl: () => state.url,
+    ask: async () => {
+      const result = await dialog.showMessageBox(window, { type: 'question', message: t('mediaPrompt'), buttons: [t('deny'), t('allow')], defaultId: 0, cancelId: 0 });
+      return result.response === 1;
+    },
   });
+  coreSession.setPermissionCheckHandler(media.check);
+  coreSession.setPermissionRequestHandler(media.request);
   window = new BrowserWindow({
     title: 'Lorevia', width: 1360, height: 920, minWidth: 900, minHeight: 620,
     backgroundColor: BACKGROUND[ui.theme],
