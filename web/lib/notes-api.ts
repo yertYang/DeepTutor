@@ -1,4 +1,5 @@
 import { apiFetch, apiUrl } from '@/lib/api'
+import { activeWorkspaceId, scopedUrl } from '@/lib/workspace-scope'
 import type { CoWriterDocument, CoWriterDocumentSummary } from '@/lib/co-writer-api'
 
 export interface NoteBlock {
@@ -35,9 +36,9 @@ export interface NoteSuggestion {
   blocks: NoteBlock[] | null
   status: 'pending' | 'accepted' | 'dismissed'
 }
-export async function noteRequest<T>(path: string, body?: unknown, method = 'POST'): Promise<T> {
+export async function noteRequest<T>(path: string, body?: unknown, method = 'POST', scope = activeWorkspaceId()): Promise<T> {
   const response = await apiFetch(
-    apiUrl(`/api/documents${path}`),
+    apiUrl(scopedUrl(`/api/documents${path}`, scope)),
     body === undefined
       ? { cache: 'no-store' }
       : {
@@ -53,11 +54,11 @@ export async function noteRequest<T>(path: string, body?: unknown, method = 'POS
   return response.json()
 }
 
-export async function exportNoteFlashcards(docId?: string): Promise<Blob> {
+export async function exportNoteFlashcards(docId?: string, scope = activeWorkspaceId()): Promise<Blob> {
   const path = docId
     ? `/api/documents/${encodeURIComponent(docId)}/flashcards/export`
     : `/api/documents/flashcards/export`
-  const response = await apiFetch(apiUrl(path), { cache: 'no-store' })
+  const response = await apiFetch(apiUrl(scopedUrl(path, scope)), { cache: 'no-store' })
   if (!response.ok) {
     const detail = await response.json().catch(() => null)
     const message =

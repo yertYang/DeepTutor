@@ -9,6 +9,7 @@ on:
       - "VERSION"
       - "scripts/native-study-acceptance.mjs"
       - "scripts/native-reading-acceptance.mjs"
+      - "scripts/native-calendar-flashcards-acceptance.mjs"
       - "scripts/desktop-releases.test.mjs"
       - "scripts/desktop-media-permissions.test.mjs"
       - "apps/desktop/src/media-permissions.mjs"
@@ -53,6 +54,8 @@ jobs:
         run: node scripts/native-study-acceptance.mjs
       - name: Exercise isolated reading snapshots, annotations and restore
         run: node scripts/native-reading-acceptance.mjs
+      - name: Exercise native calendar, task board, flashcards and recovery
+        run: node scripts/native-calendar-flashcards-acceptance.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -60,4 +63,5 @@ jobs:
           path: |
             dist/native-study-acceptance/*.json
             dist/native-reading-acceptance/*.json
+            dist/native-calendar-flashcards-acceptance/*.json
           if-no-files-found: ignore

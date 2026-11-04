@@ -284,7 +284,7 @@ export default function CoWriterHomePage() {
         )}
         action={
           <div className="flex shrink-0 items-center gap-2">
-            {!native && <NoteReview />}
+            <NoteReview />
             {
               <button
                 type="button"

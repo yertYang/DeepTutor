@@ -25,15 +25,20 @@
     },
     {
       "id": "calendar",
-      "installed": false,
-      "enabled": false,
-      "ready": false,
+      "installed": true,
+      "enabled": true,
+      "ready": true,
       "navigation": [
         "/calendar"
       ],
-      "issues": [
-        "Not migrated to the independent Rust server."
-      ]
+      "issues": [],
+      "features": {
+        "native_storage": true,
+        "recurrence": true,
+        "reminders": true,
+        "ics_export": true,
+        "task_links": true
+      }
     },
     {
       "id": "co-writer",
@@ -48,7 +53,7 @@
         "native_editor": true,
         "ai_companion": false,
         "word_import": true,
-        "flashcards": false,
+        "flashcards": true,
         "reviewed_ai_edits": true
       }
     },

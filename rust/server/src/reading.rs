@@ -580,7 +580,7 @@ mod tests {
         assert_eq!(
             c.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
                 .unwrap(),
-            6
+            crate::backup::SCHEMA_VERSION
         );
         assert_eq!(
             crate::documents::read(&c, "a", text(&page, "id")).unwrap(),

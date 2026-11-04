@@ -160,3 +160,18 @@ CREATE TABLE IF NOT EXISTS native_reading_clips(
  PRIMARY KEY(workspace_id,item_id,annotation_id),
  FOREIGN KEY(workspace_id,item_id,annotation_id) REFERENCES native_reading_annotations(workspace_id,item_id,id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS native_calendar_state(id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL);
+INSERT OR IGNORE INTO native_calendar_state VALUES(1,0);
+CREATE TABLE IF NOT EXISTS native_calendar_objects(kind TEXT NOT NULL,id TEXT NOT NULL,payload_json TEXT NOT NULL,PRIMARY KEY(kind,id));
+CREATE TABLE IF NOT EXISTS native_calendar_receipts(command_id TEXT PRIMARY KEY,request_digest TEXT NOT NULL,payload_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS native_calendar_undo(id TEXT PRIMARY KEY,payload_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS native_flashcard_decks (
+ workspace_id TEXT NOT NULL,page_id TEXT NOT NULL,payload_json TEXT NOT NULL,
+ PRIMARY KEY(workspace_id,page_id),
+ FOREIGN KEY(workspace_id,page_id) REFERENCES native_documents(workspace_id,id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS native_flashcard_receipts (
+ workspace_id TEXT NOT NULL,command_id TEXT NOT NULL,digest TEXT NOT NULL,payload_json TEXT NOT NULL,
+ PRIMARY KEY(workspace_id,command_id)
+);

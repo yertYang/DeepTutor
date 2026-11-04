@@ -6682,5 +6682,14 @@
   "Captions show the AI’s spoken replies. You can copy them before leaving this page.": "Captions show the AI’s spoken replies. You can copy them before leaving this page.",
   "View updates": "View updates",
   "This Web interface is updated with its server deployment. View release notes for update instructions.": "This Web interface is updated with its server deployment. View release notes for update instructions.",
-  "Update this desktop app by downloading an installer for your platform.": "Update this desktop app by downloading an installer for your platform."
+  "Update this desktop app by downloading an installer for your platform.": "Update this desktop app by downloading an installer for your platform.",
+  "Flashcards": "Flashcards",
+  "Add card": "Add card",
+  "Save flashcards": "Save flashcards",
+  "Reload saved cards": "Reload saved cards",
+  "Remove card": "Remove card",
+  "Front": "Front",
+  "Edit both sides, save, then reveal the answer before grading. Changed cards restart their review schedule.": "Edit both sides, save, then reveal the answer before grading. Changed cards restart their review schedule.",
+  "No flashcards due. Come back when the next review is scheduled.": "No flashcards due. Come back when the next review is scheduled.",
+  "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards.": "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards."
 }

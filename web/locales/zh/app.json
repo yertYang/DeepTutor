@@ -6680,5 +6680,14 @@
   "Captions show the AI’s spoken replies. You can copy them before leaving this page.": "字幕展示 AI 的语音回复，离开页面前可复制保存。",
   "View updates": "查看更新",
   "This Web interface is updated with its server deployment. View release notes for update instructions.": "当前 Web 界面需要随服务部署一起更新。请查看发布说明，更新部署服务后刷新页面。",
-  "Update this desktop app by downloading an installer for your platform.": "请下载适合当前系统的新版安装包，更新桌面应用。"
+  "Update this desktop app by downloading an installer for your platform.": "请下载适合当前系统的新版安装包，更新桌面应用。",
+  "Flashcards": "闪卡",
+  "Add card": "添加卡片",
+  "Save flashcards": "保存闪卡",
+  "Reload saved cards": "重新载入已保存卡片",
+  "Remove card": "删除卡片",
+  "Front": "正面",
+  "Edit both sides, save, then reveal the answer before grading. Changed cards restart their review schedule.": "编辑卡片正反面并保存，显示答案后再评分。修改过的卡片将重新开始复习排程。",
+  "No flashcards due. Come back when the next review is scheduled.": "当前没有到期闪卡，请在下次复习时间再来。",
+  "Flashcards changed elsewhere. Your local draft is preserved; reload to use the saved cards.": "闪卡已在其他位置修改。本地草稿已保留，可重新载入已保存卡片。"
 }

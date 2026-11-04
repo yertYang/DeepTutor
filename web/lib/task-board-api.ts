@@ -35,6 +35,8 @@ export interface TaskBoard {
 }
 
 const endpoint = '/api/task-board'
+let observedRevision: number | null = null
+const pendingCommands = new Map<string, string>()
 const listeners = new Set<(board: TaskBoard, workspaceId: string) => void>()
 export function subscribeTaskBoardChanges(listener: (board: TaskBoard, workspaceId: string) => void) {
   listeners.add(listener)
@@ -62,9 +64,27 @@ async function request(
   init?: RequestInit,
   workspaceId = activeWorkspaceId()
 ): Promise<TaskBoard> {
-  const response = await apiFetch(taskBoardUrl(path, workspaceId), init)
-  if (!response.ok) throw new Error('Task board request failed')
+  const headers = new Headers(init?.headers)
+  const changing = init?.method && !['GET', 'HEAD'].includes(init.method.toUpperCase())
+  const fingerprint = `${workspaceId}:${init?.method}:${path}:${init?.body || ''}`
+  if (changing) {
+    if (observedRevision === null) await getTaskBoard(undefined, workspaceId)
+    if (!pendingCommands.has(fingerprint)) {
+      if (pendingCommands.size >= 128) pendingCommands.delete(pendingCommands.keys().next().value!)
+      pendingCommands.set(fingerprint, crypto.randomUUID())
+    }
+    headers.set('If-Match', `"${observedRevision}"`)
+    headers.set('Idempotency-Key', pendingCommands.get(fingerprint)!)
+  }
+  const response = await apiFetch(taskBoardUrl(path, workspaceId), { ...init, headers })
+  if (!response.ok) {
+    if (response.status === 409) observedRevision = null
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.detail || body.message || 'Task board request failed')
+  }
   const board = normalizeTaskBoard(await response.json())
+  observedRevision = Math.max(observedRevision ?? 0, board.revision)
+  if (changing) pendingCommands.delete(fingerprint)
   // A response belongs to the workspace selected when the request started.
   if (init?.method) publishTaskBoard(board, workspaceId)
   return board

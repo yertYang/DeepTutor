@@ -9,6 +9,7 @@ import { browserStorage } from '@/shared/storage'
 import { notifyCoWriterChanged } from '@/lib/co-writer-events'
 import type { NoteBlock, NotePage, NoteSummary } from '@/lib/notes-api'
 import NotePageHead from './NotePageHead'
+import NativeFlashcards from './NativeFlashcards'
 import NotePageTree from './NotePageTree'
 import NativeNoteEditor, { nativeBlocksEditable } from './NativeNoteEditor'
 import type { NoteSaveStatus } from './NoteTopBar'
@@ -27,6 +28,7 @@ export default function NativeNoteWorkspace({ docId }: { docId: string }) {
   const key = `deeptutor.native-note:${scope}:${docId}`
   const [page, setPage] = useState<NotePage | null>(null)
   const [pages, setPages] = useState<NoteSummary[]>([])
+  const [flashcardsOpen, setFlashcardsOpen] = useState(false)
   const [versions, setVersions] = useState<Version[] | null>(null)
   const [recovery, setRecovery] = useState<Draft | null>(null)
   const [status, setStatus] = useState<NoteSaveStatus>('Saved')
@@ -162,9 +164,11 @@ export default function NativeNoteWorkspace({ docId }: { docId: string }) {
         if (versions) setVersions(null)
         else setVersions((await request<{ versions: Version[] }>(`/${docId}/versions`)).versions)
       })}>{t('Version history')}</button>
+      <button className="dt-note-button" disabled={busy || !page} onClick={() => void perform(async () => setFlashcardsOpen(v => !v))}>{t('Flashcards')}</button>
       <button className="dt-note-button" disabled={busy || !page} onClick={() => void perform(() => download('md'))}>{t('Export Markdown')}</button>
       <button className="dt-note-button" disabled={busy || !page} onClick={() => void perform(() => download('json'))}>{t('Export JSON')}</button>
     </header>
+    {flashcardsOpen && <NativeFlashcards pageId={docId} scope={scope} />}
     {error && <div className="dt-note-banner is-error" role="alert"><span className="flex-1">{error}</span>
       <button className="dt-note-button" onClick={() => latest.current ? void perform(async () => {}) : window.location.reload()}>{t('Retry')}</button>
       <button className="dt-note-button" onClick={() => window.location.reload()}>{t('Reload page')}</button>
