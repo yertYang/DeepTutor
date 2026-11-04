@@ -8,6 +8,7 @@ on:
       - "Cargo.*"
       - "VERSION"
       - "scripts/native-study-acceptance.mjs"
+      - "scripts/native-reading-acceptance.mjs"
       - ".github/workflows/native-validation.yml"
 
 permissions:
@@ -42,9 +43,13 @@ jobs:
         env:
           OCR_QA: ${{ runner.os == 'macOS' && '1' || '0' }}
         run: node scripts/native-study-acceptance.mjs
+      - name: Exercise isolated reading snapshots, annotations and restore
+        run: node scripts/native-reading-acceptance.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: native-acceptance-${{ matrix.runner }}
-          path: dist/native-study-acceptance/*.json
+          path: |
+            dist/native-study-acceptance/*.json
+            dist/native-reading-acceptance/*.json
           if-no-files-found: ignore

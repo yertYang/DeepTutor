@@ -1,5 +1,4 @@
-import { MaterialLibraryPage } from "@/components/reading/library/MaterialLibrary";
-
+import NativeReadingLibrary from '@/components/reading/native/NativeReadingLibrary'
 export default function ReadingMaterialsRoute() {
-  return <MaterialLibraryPage />;
+  return <NativeReadingLibrary />
 }

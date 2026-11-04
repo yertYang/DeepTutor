@@ -9,7 +9,7 @@ import type { LearningKind, LearningSources } from '@/lib/learning-dashboard'
 
 const CACHE_KEY = 'navigation:learning-index'
 type LearningIndex = { sources: LearningSources; failed: LearningKind[] }
-const EMPTY: LearningSources = { books: [], mastery: [], reading: [], watching: [], practice: [], native: [] }
+const EMPTY: LearningSources = { books: [], mastery: [], reading: [], watching: [], practice: [], native: [], native_reading: [] }
 export function useLearningIndex(enabled = true) {
   const pathname = usePathname()
   const [sources, setSources] = useState<LearningSources>(
@@ -70,6 +70,7 @@ export function useLearningIndex(enabled = true) {
     void refresh()
     const unsubscribe = subscribeSessionChanges(() => void refresh())
     window.addEventListener('focus', refresh)
+    window.addEventListener('native-reading:changed', refresh)
     document.addEventListener('visibilitychange', refresh)
     const timer = window.setInterval(refresh, 30000)
     return () => {
@@ -77,6 +78,7 @@ export function useLearningIndex(enabled = true) {
       unsubscribe()
       window.clearInterval(timer)
       window.removeEventListener('focus', refresh)
+      window.removeEventListener('native-reading:changed', refresh)
       document.removeEventListener('visibilitychange', refresh)
     }
   }, [enabled, pathname, revision])

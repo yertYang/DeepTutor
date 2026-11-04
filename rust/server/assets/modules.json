@@ -206,17 +206,25 @@
     },
     {
       "id": "reading",
-      "installed": false,
-      "enabled": false,
-      "ready": false,
+      "installed": true,
+      "enabled": true,
+      "ready": true,
       "navigation": [
         "/reading",
-        "/learning/reading",
-        "/learning/watching"
+        "/learning/reading"
       ],
-      "issues": [
-        "Not migrated to the independent Rust server."
-      ]
+      "issues": [],
+      "features": {
+        "local_documents": true,
+        "immutable_snapshots": true,
+        "saved_position": true,
+        "annotations": true,
+        "note_clips": true,
+        "export": true,
+        "web_reading": false,
+        "ai_reading_tutor": false,
+        "media": false
+      }
     },
     {
       "id": "renderer-manim",
@@ -352,6 +360,18 @@
       "features": {
         "explicit_provenance": true
       }
+    },
+    {
+      "id": "reading-media",
+      "installed": false,
+      "enabled": false,
+      "ready": false,
+      "navigation": [
+        "/learning/watching"
+      ],
+      "issues": [
+        "Media viewing and reading conversations have not migrated to the native server."
+      ]
     }
   ]
 }

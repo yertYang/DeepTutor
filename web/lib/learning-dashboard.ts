@@ -15,6 +15,7 @@ import { sessionWorkspaceId } from '@/lib/session-api'
 export type LearningKind = 'books' | 'mastery' | 'reading' | 'watching' | 'practice'
 export type Located<T> = T & { content_workspace_id?: string; content_workspace_name?: string }
 export interface LearningSources {
+  native_reading?: Located<{id:string;title:string;created_at:number;updated_at:number;line_count:number;progress:{line:number;completed:boolean}}> []
   native?: Located<{id:string;kind:string;title:string;created_at:number;updated_at:number}>[]
   books: Located<Book>[]
   mastery: Located<MasteryTopic>[]
@@ -41,6 +42,15 @@ export function isWatchingSession(session: SessionSummary): boolean {
 /** Every activity across the surfaces, newest first. Archived paths are not work in progress. */
 export function allLearningActivity(sources: LearningSources): LearningActivity[] {
   return [
+    ...(sources.native_reading ?? []).map(entry => ({
+      key: 'native-reading:' + (entry.content_workspace_id || '') + ':' + entry.id,
+      kind: 'reading' as const,
+      title: entry.title,
+      href: scopedUrl('/learning/reading/' + encodeURIComponent(entry.id), entry.content_workspace_id || ''),
+      updatedAt: entry.updated_at,
+      createdAt: entry.created_at,
+      progress: entry.progress.completed ? 1 : (entry.progress.line - 1) / Math.max(1, entry.line_count),
+    })),
     ...(sources.native ?? []).map(entry => ({
       key: 'native:' + (entry.content_workspace_id || '') + ':' + entry.id,
       kind: (entry.kind === 'deep_question' ? 'practice' : entry.kind === 'mastery_path' ? 'mastery' : 'reading') as LearningKind,

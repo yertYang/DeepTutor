@@ -1,5 +1,4 @@
-import { ReadingWorkspacePage } from "@/components/reading/workspace/ReadingWorkspace";
-
-export default function ImmersiveReadingWorkspaceRoute() {
-  return <ReadingWorkspacePage />;
+import NativeReadingUnavailable from '@/components/reading/native/NativeReadingUnavailable'
+export default function ReadingSessionsRoute() {
+  return <NativeReadingUnavailable />
 }

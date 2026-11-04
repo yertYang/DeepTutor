@@ -7,6 +7,7 @@ import { Download, ExternalLink, Search, StickyNote } from 'lucide-react'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { activeWorkspaceId, scopedUrl } from '@/lib/workspace-scope'
 import { pageActionClass } from '@/components/layout/FeaturePage'
+import { readingChanged, readingRequest } from '@/lib/native-reading'
 
 type File = { name: string; sha256: string }
 type Passage = { path: string; hash: string; content: string }
@@ -197,6 +198,17 @@ export default function NativeKnowledgeReader({
           <section className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-3">
               <h3 className="break-all font-medium">{passage.path}</h3>
+              <button
+                className={pageActionClass('secondary')}
+                disabled={busy}
+                onClick={() => void perform(async () => {
+                  const item = await readingRequest<{id: string}>(scope, '', {kb: kbName, path: passage.path, hash: passage.hash})
+                  readingChanged()
+                  router.push(scopedUrl(`/learning/reading/${item.id}`, scope))
+                })}
+              >
+                {t('Add to reading library')}
+              </button>
               <a
                 className={pageActionClass('secondary')}
                 href={sourceUrl(passage.path, passage.hash, 1, true)}

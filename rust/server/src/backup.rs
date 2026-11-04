@@ -5,7 +5,7 @@ use rusqlite::{Connection, OpenFlags};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::path::Path;
-pub const SCHEMA_VERSION: i64 = 5;
+pub const SCHEMA_VERSION: i64 = 6;
 pub fn snapshot(conn: &Connection, directory: &Path, label: &str) -> Result<Value> {
     let parent = directory
         .parent()

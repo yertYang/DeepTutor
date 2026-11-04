@@ -226,7 +226,7 @@ pub fn dashboard(conn: &Connection, scope: &str) -> Result<Value> {
     let records=conn.prepare("SELECT id,json_extract(payload_json,'$.kind'),json_extract(payload_json,'$.title'),json_extract(payload_json,'$.created_at'),json_extract(payload_json,'$.updated_at') FROM native_study_artifacts WHERE workspace_id=? ORDER BY json_extract(payload_json,'$.updated_at') DESC LIMIT 100")?
         .query_map([scope],|row|Ok(json!({"id":row.get::<_,String>(0)?,"kind":row.get::<_,String>(1)?,"title":row.get::<_,String>(2)?,"created_at":row.get::<_,f64>(3)?,"updated_at":row.get::<_,f64>(4)?,"content_workspace_id":scope})))?.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(
-        json!({"sources":{"books":[],"mastery":[],"reading":[],"watching":[],"practice":[],"native":records},"failed":[]}),
+        json!({"sources":{"books":[],"mastery":[],"reading":[],"watching":[],"practice":[],"native":records,"native_reading":crate::reading::dashboard(conn,scope)?},"failed":[]}),
     )
 }
 fn source_url(kb: &str, file: &str, hash: &str, scope: &str, line: i64) -> String {

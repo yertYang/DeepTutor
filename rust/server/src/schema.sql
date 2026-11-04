@@ -126,3 +126,37 @@ CREATE TABLE IF NOT EXISTS native_browser_artifacts(
 CREATE TABLE IF NOT EXISTS native_memory_maintenance(workspace_id TEXT PRIMARY KEY,payload_json TEXT NOT NULL);
 
 CREATE TABLE IF NOT EXISTS native_document_import_receipts(workspace_id TEXT NOT NULL,command_id TEXT NOT NULL,request_digest TEXT NOT NULL,document_id TEXT NOT NULL,PRIMARY KEY(workspace_id,command_id));
+
+-- Reading owns its snapshots: removing/replacing an indexed file cannot move a quote.
+CREATE TABLE IF NOT EXISTS native_reading_sources(
+ workspace_id TEXT NOT NULL,id TEXT NOT NULL,content TEXT NOT NULL,original BLOB NOT NULL,
+ PRIMARY KEY(workspace_id,id)
+);
+CREATE TABLE IF NOT EXISTS native_reading_items(
+ workspace_id TEXT NOT NULL,id TEXT NOT NULL,source_id TEXT NOT NULL,kb TEXT NOT NULL,path TEXT NOT NULL,
+ original_hash TEXT NOT NULL,payload_json TEXT NOT NULL,
+ PRIMARY KEY(workspace_id,id),UNIQUE(workspace_id,kb,path,original_hash),
+ FOREIGN KEY(workspace_id,source_id) REFERENCES native_reading_sources(workspace_id,id)
+);
+CREATE TABLE IF NOT EXISTS native_reading_progress(
+ workspace_id TEXT NOT NULL,item_id TEXT NOT NULL,payload_json TEXT NOT NULL,
+ PRIMARY KEY(workspace_id,item_id),
+ FOREIGN KEY(workspace_id,item_id) REFERENCES native_reading_items(workspace_id,id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS native_reading_annotations(
+ workspace_id TEXT NOT NULL,item_id TEXT NOT NULL,id TEXT NOT NULL,payload_json TEXT NOT NULL,
+ PRIMARY KEY(workspace_id,item_id,id),
+ FOREIGN KEY(workspace_id,item_id) REFERENCES native_reading_items(workspace_id,id) ON DELETE CASCADE
+);
+-- Creation receipts survive annotation deletion, so an ambiguous retry never resurrects it.
+CREATE TABLE IF NOT EXISTS native_reading_receipts(
+ workspace_id TEXT NOT NULL,command_id TEXT NOT NULL,item_id TEXT NOT NULL,
+ request_digest TEXT NOT NULL,annotation_id TEXT NOT NULL,
+ PRIMARY KEY(workspace_id,command_id),
+ FOREIGN KEY(workspace_id,item_id) REFERENCES native_reading_items(workspace_id,id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS native_reading_clips(
+ workspace_id TEXT NOT NULL,item_id TEXT NOT NULL,annotation_id TEXT NOT NULL,document_id TEXT NOT NULL,
+ PRIMARY KEY(workspace_id,item_id,annotation_id),
+ FOREIGN KEY(workspace_id,item_id,annotation_id) REFERENCES native_reading_annotations(workspace_id,item_id,id) ON DELETE CASCADE
+);

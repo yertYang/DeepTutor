@@ -39,6 +39,8 @@ mod document_parser;
 pub mod knowledge;
 mod knowledge_api;
 pub mod ocr;
+pub mod reading;
+mod reading_api;
 mod study;
 mod study_api;
 mod workspaces;

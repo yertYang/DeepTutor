@@ -28,6 +28,7 @@ pub fn router(app: App) -> Router {
         .merge(crate::settings_api::router())
         .merge(crate::learning_api::router())
         .merge(crate::knowledge_api::router())
+        .merge(crate::reading_api::router())
         .merge(crate::workspaces_api::router())
         .merge(crate::study_api::router())
         .merge(crate::client_api::router())
